@@ -1,6 +1,6 @@
 {
-  "versionCode": 1,
-  "versionName": "1.0.0",
+  "versionCode": 2,
+  "versionName": "1.0.1",
   "apk": "https://edwinguan11.github.io/wallet-book/wallet-book.apk",
-  "notes": "首次版本：香港支付方式記賬、分類統計、月度結算、朋友分賬、圖表。"
+  "notes": "1.0.1 更新內容：\n· 修正淺色主題下外框仍為黑色\n· 設定頁錢包列表改為收合顯示\n· 輸入金額即時顯示多種貨幣換算"
 }

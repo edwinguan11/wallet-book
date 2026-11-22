@@ -23,13 +23,45 @@
     return head.concat(rest);
   }
 
+  const SHOW_CUR = ['HKD', 'CNY', 'JPY', 'USD', 'TWD'];
+  const SYM_TAG = { HKD: 'HK$', CNY: 'CN¥', JPY: 'JP¥', USD: 'US$', TWD: 'NT$', KRW: '₩', THB: '฿', GBP: '£', EUR: '€', SGD: 'S$', MYR: 'RM' };
+
+  function num(v, cur) {
+    if (cur === 'JPY' || cur === 'KRW') return Math.round(v).toLocaleString('en-US');
+    if (v >= 10000) return Math.round(v).toLocaleString('en-US');
+    if (v >= 100) return v.toFixed(1);
+    return v.toFixed(2);
+  }
+
+  /* 輸入金額即時換算成其他貨幣 */
   function convText() {
     const d = draft();
-    if (!d.currency || d.currency === 'HKD') return '';
-    const rate = Number((Store.get().settings.rates || {})[d.currency]) || 1;
     const amt = parseFloat(d.amount) || 0;
-    const hkd = Math.round(amt * rate * 100) / 100;
-    return '1 ' + d.currency + ' ≈ HK$' + rate + '　·　合共 HK$' + hkd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (!amt) return '';
+    const rates = Store.get().settings.rates || {};
+    const cur = d.currency || 'HKD';
+    const toHkd = cur === 'HKD' ? 1 : (Number(rates[cur]) || 1);
+    const hkd = amt * toHkd;
+    const out = [];
+    SHOW_CUR.forEach(function (t) {
+      if (t === cur) return;
+      const r = Number(rates[t]) || 1;      // 1 單位 t = r HKD
+      const v = hkd / r;
+      out.push('<span class="cv' + (t === 'HKD' ? ' hl' : '') + '">' +
+        (SYM_TAG[t] || t + ' ') + num(v, t) + '</span>');
+    });
+    return out.slice(0, 4).join('');
+  }
+
+  /* 換算說明（原幣 → 港幣） */
+  function convNote() {
+    const d = draft();
+    const amt = parseFloat(d.amount) || 0;
+    const cur = d.currency || 'HKD';
+    if (!amt || cur === 'HKD') return '';
+    const rate = Number((Store.get().settings.rates || {})[cur]) || 1;
+    return '按今日匯率 1 ' + cur + ' ≈ HK$' + rate + '　·　合共 ' +
+      U.fmtMoney(Math.round(amt * rate * 100) / 100, true);
   }
 
   function amountText() {
@@ -104,7 +136,8 @@
       '<span class="val ' + (amountText() === '0' ? 'zero' : '') + '" id="amtVal">' + esc(amountText()) + '</span>' +
       '</div>';
 
-    const conv = '<div class="conv" id="convLine">' + convText() + '</div>';
+    const conv = '<div class="conv-row" id="convRow">' + convText() + '</div>' +
+      '<div class="conv-note" id="convLine">' + convNote() + '</div>';
 
     const nl = '<div class="nlbar"><input id="nlInput" type="text" placeholder="一句記賬：午餐 45 八達通" autocomplete="off">' +
       '<button id="nlGo">記</button></div>';
@@ -188,8 +221,10 @@
           el.classList.add('bump');
           setTimeout(function () { el.classList.remove('bump'); }, 180);
         }
+        const cr = $('#convRow');
+        if (cr) cr.innerHTML = convText();
         const cl = $('#convLine');
-        if (cl) cl.textContent = convText();
+        if (cl) cl.textContent = convNote();
         if (navigator.vibrate && k !== '⌫') navigator.vibrate(6);
       };
     });

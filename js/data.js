@@ -149,7 +149,7 @@
     return out;
   }
 
-  const RATES = { HKD: 1, CNY: 1.09, JPY: 0.052, KRW: 0.0057, TWD: 0.245, THB: 0.22, USD: 7.8, GBP: 9.9, EUR: 8.5, SGD: 5.8, MYR: 1.75 };
+  const RATES = { HKD: 1, CNY: 1.1709, JPY: 0.0494, KRW: 0.0058, TWD: 0.2380, THB: 0.2311, USD: 7.8387, GBP: 10.2686, EUR: 8.6007, SGD: 6.0778, MYR: 1.9062 };
 
   function freshData() {
     return {

@@ -83,9 +83,16 @@
 
   /* ---------- 主題 ---------- */
   UI.applyTheme = function (t) {
-    document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
+    const light = t === 'light';
+    document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', t === 'light' ? '#f4f6fa' : '#0b0d12');
+    if (meta) meta.setAttribute('content', light ? '#f4f6fa' : '#0b0d12');
+    // 通知 Android 外殼同步狀態欄與底色，避免淺色主題仍舊黑框
+    try {
+      if (window.AndroidBridge && window.AndroidBridge.setTheme) {
+        window.AndroidBridge.setTheme(light ? 'light' : 'dark');
+      }
+    } catch (e) {}
   };
   UI.toggleTheme = function () {
     const s = Store.get().settings;

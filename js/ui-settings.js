@@ -51,8 +51,11 @@
     const ws = Data.wallets();
     const cats = Data.categories();
 
+    const expanded = !!UI.state.walletsExpanded;
+    const shownWallets = expanded ? ws : ws.slice(0, 5);
+
     let html = '<div class="h-sec" style="margin-top:0">錢包</div><div class="card">';
-    ws.forEach(function (w) {
+    shownWallets.forEach(function (w) {
       const bal = Data.walletBalance(w.id);
       const isCredit = w.type === 'credit';
       html += '<div class="wrow" data-ew="' + w.id + '">' +
@@ -65,7 +68,11 @@
         U.fmtMoney(bal) + '</span>' +
         '<span class="muted" style="font-size:15px">›</span></div>';
     });
-    html += '<div style="margin-top:12px"><button class="btn block" id="addWallet">＋ 新增錢包或支付方式</button></div></div>';
+    if (ws.length > 5) {
+      html += '<div style="margin-top:10px"><button class="btn block" id="toggleWallets">' +
+        (expanded ? '收起錢包列表' : '顯示全部 ' + ws.length + ' 個錢包') + '</button></div>';
+    }
+    html += '<div style="margin-top:8px"><button class="btn block" id="addWallet">＋ 新增錢包或支付方式</button></div></div>';
 
     html += '<div class="h-sec">分類</div><div class="card">' +
       '<div class="row between"><span class="mini-k">支出 ' + Data.categories('expense').length +
@@ -388,6 +395,11 @@
     $$('[data-ec]').forEach(function (el) {
       el.onclick = function () { editCat(el.dataset.ec); };
     });
+    const tw = $('#toggleWallets');
+    if (tw) tw.onclick = function () {
+      UI.state.walletsExpanded = !UI.state.walletsExpanded;
+      UI.render();
+    };
     const aw = $('#addWallet'); if (aw) aw.onclick = function () { editWallet(null); };
     const ac = $('#addCat'); if (ac) ac.onclick = function () { editCat(null); };
 

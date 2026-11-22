@@ -452,3 +452,18 @@ body, .topbar, .tabbar, .card, .stat, .txn, .chip, .key, input, select, .sheet {
     transition-duration: .01ms !important;
   }
 }
+
+/* 匯率換算列 */
+.conv-row {
+  display: flex; gap: 7px; justify-content: center; flex-wrap: wrap;
+  margin: -2px 0 10px; min-height: 22px;
+}
+.conv-row .cv {
+  background: var(--card2); border: 1px solid var(--line);
+  padding: 3px 9px; border-radius: 9px; font-size: 11.5px;
+  font-variant-numeric: tabular-nums; color: var(--muted);
+  animation: cvIn .18s var(--ease-out) both;
+}
+.conv-row .cv.hl { color: var(--fg); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+@keyframes cvIn { from { opacity: 0; transform: translateY(4px) scale(.96); } to { opacity: 1; transform: none; } }
+.conv-note { text-align: center; font-size: 10.5px; color: var(--muted); margin: -6px 0 8px; }
