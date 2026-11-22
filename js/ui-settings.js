@@ -63,6 +63,9 @@
       '<div class="row between"><div><div style="font-size:14px;font-weight:600">GitHub Gist 同步</div>' +
       '<div class="mini-k" id="syncStatusTxt">' + esc(Sync.statusText()) + '</div></div>' +
       '<button class="btn sm primary" id="syncNow">立即同步</button></div>' +
+      (s.sync.gistId ? '<div class="help" style="margin-top:10px">Gist ID（另一部裝置要填這個）：<br>' +
+        '<code id="gidTxt" style="word-break:break-all">' + esc(s.sync.gistId) + '</code> ' +
+        '<button class="btn sm" id="copyGid" style="margin-left:6px">複製</button></div>' : '') +
       '<div style="margin-top:12px"><button class="btn block" id="syncSetup">設定同步</button></div></div>';
 
     html += '<div class="h-sec">分類</div><div class="card">' +
@@ -261,15 +264,17 @@
   /* ---------- 同步設定 ---------- */
   function syncSetup() {
     const c = Store.get().settings.sync;
+    const tokUrl = 'https://github.com/settings/tokens/new?scopes=gist&description=wallet-book';
     const html = '<h3>設定跨裝置同步</h3>' +
-      '<div class="help" style="margin-bottom:14px">' +
-      '同步使用 GitHub 的「私有 Gist」作為雲端儲存。手機與電腦輸入同一組資料，即可看到相同的記賬記錄。<br><br>' +
-      '<b>步驟：</b><br>' +
-      '1. 開啟 <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener">GitHub 權杖設定</a><br>' +
-      '2. 建立 Fine-grained token，只勾選 <b>Gists</b> 權限（Read and write）<br>' +
-      '3. 複製權杖，貼到下方欄位<br>' +
-      '4. 按「建立新的 Gist」，再把同一組權杖與 Gist ID 輸入到另一部裝置' +
+      '<div class="help" style="margin-bottom:12px">' +
+      '同步以 GitHub 的「私有 Gist」作雲端儲存：手機與電腦看到同一份記錄，資料不經第三方伺服器。' +
       '</div>' +
+      '<a class="btn primary block" href="' + tokUrl + '" target="_blank" rel="noopener" id="tokLink">① 開啟 GitHub 建立權杖</a>' +
+      '<div class="help" style="margin:10px 0 14px">' +
+      '開啟後：<b>Note</b> 隨便填（例如 wallet-book）→ <b>Expiration</b> 選 No expiration → ' +
+      '下面權限只需勾選 <b>gist</b>（其他全部留空）→ 拉到最底按 <b>Generate token</b> → 複製 <code>ghp_...</code>。' +
+      '</div>' +
+      '<div class="h-sec" style="margin:0 0 8px">② 貼上權杖</div>' +
       '<div class="frm">' +
       '<div><label class="fl">GitHub 權杖（Token）</label>' +
       '<input type="password" id="sToken" value="' + esc(c.token) + '" placeholder="github_pat_... 或 ghp_..."></div>' +
@@ -278,7 +283,7 @@
       '<div class="row"><label style="flex:1;font-size:13.5px"><input type="checkbox" id="sAuto"' + (c.auto ? ' checked' : '') +
       ' style="width:auto;margin-right:8px">自動同步（修改後約 4 秒）</label></div>' +
       '</div>' +
-      '<div class="sheet-actions"><button class="btn" id="sMake">建立新的 Gist</button>' +
+      '<div class="sheet-actions"><button class="btn" id="sMake">③ 建立新的 Gist</button>' +
       '<button class="btn primary" id="sSave">儲存並同步</button></div>';
 
     UI.sheet(html, function (root) {
@@ -342,6 +347,11 @@
     const aw = $('#addWallet'); if (aw) aw.onclick = function () { editWallet(null); };
     const ac = $('#addCat'); if (ac) ac.onclick = function () { editCat(null); };
     const ss = $('#syncSetup'); if (ss) ss.onclick = syncSetup;
+    const cg = $('#copyGid'); if (cg) cg.onclick = function () {
+      const t = $('#gidTxt').textContent;
+      if (navigator.clipboard) navigator.clipboard.writeText(t).then(function () { UI.toast('已複製 Gist ID'); });
+      else UI.toast('請長按選取複製');
+    };
     const sn = $('#syncNow'); if (sn) sn.onclick = async function () {
       if (!Sync.configured()) { syncSetup(); return; }
       sn.disabled = true; sn.textContent = '同步中…';
