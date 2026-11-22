@@ -66,7 +66,10 @@
       (s.sync.gistId ? '<div class="help" style="margin-top:10px">Gist ID（另一部裝置要填這個）：<br>' +
         '<code id="gidTxt" style="word-break:break-all">' + esc(s.sync.gistId) + '</code> ' +
         '<button class="btn sm" id="copyGid" style="margin-left:6px">複製</button></div>' : '') +
-      '<div style="margin-top:12px"><button class="btn block" id="syncSetup">設定同步</button></div></div>';
+      '<div style="margin-top:12px"><button class="btn block" id="syncSetup">設定同步</button></div>' +
+      (s.sync.token && s.sync.gistId
+        ? '<div style="margin-top:8px"><button class="btn block" id="syncQR">📱 用手機掃碼同步</button></div>' : '') +
+      '</div>';
 
     html += '<div class="h-sec">分類</div><div class="card">' +
       '<div class="row between"><span class="mini-k">支出 ' + Data.categories('expense').length +
@@ -319,6 +322,36 @@
     });
   }
 
+  /* ---------- 手機掃碼同步 ---------- */
+  function showSyncQR() {
+    const c = Store.get().settings.sync;
+    if (!c.token || !c.gistId) { UI.toast('請先貼上權杖並建立 Gist'); return; }
+    const payload = JSON.stringify({ t: c.token, g: c.gistId });
+    const b64 = btoa(unescape(encodeURIComponent(payload)));
+    const url = location.origin + location.pathname + '#sync=' + encodeURIComponent(b64);
+    let svg = '';
+    try {
+      const qr = window.qrcode(0, 'M');
+      qr.addData(url);
+      qr.make();
+      svg = qr.createSvgTag({ cellSize: 4, margin: 1 });
+    } catch (e) {
+      svg = '<div class="help">無法產生 QR 碼</div>';
+    }
+    UI.sheet('<h3>用手機掃描</h3>' +
+      '<div style="background:#fff;padding:12px;border-radius:16px;max-width:260px;margin:0 auto;display:flex;justify-content:center">' +
+      '<div style="width:100%">' + svg + '</div></div>' +
+      '<div class="help" style="margin-top:14px">用 iPhone／Android 的相機掃描上面的碼，會自動打開記賬本並套用同一組同步設定。<br><br>' +
+      '「設定 → 加到主畫面」後就像 App 一樣使用。<br><br>' +
+      '<b>這個碼包含你的權杖，請勿截圖或傳給別人。</b></div>' +
+      '<div class="sheet-actions"><button class="btn primary" id="qrClose">完成</button></div>',
+      function (root) {
+        const sv = root.querySelector('svg');
+        if (sv) { sv.setAttribute('style', 'width:100%;height:auto;display:block'); sv.removeAttribute('width'); sv.removeAttribute('height'); }
+        root.querySelector('#qrClose').onclick = UI.closeSheet;
+      });
+  }
+
   /* ---------- 密碼鎖 ---------- */
   function pinSetup() {
     const s = Store.get().settings;
@@ -347,6 +380,7 @@
     const aw = $('#addWallet'); if (aw) aw.onclick = function () { editWallet(null); };
     const ac = $('#addCat'); if (ac) ac.onclick = function () { editCat(null); };
     const ss = $('#syncSetup'); if (ss) ss.onclick = syncSetup;
+    const qb = $('#syncQR'); if (qb) qb.onclick = showSyncQR;
     const cg = $('#copyGid'); if (cg) cg.onclick = function () {
       const t = $('#gidTxt').textContent;
       if (navigator.clipboard) navigator.clipboard.writeText(t).then(function () { UI.toast('已複製 Gist ID'); });
