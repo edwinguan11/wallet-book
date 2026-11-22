@@ -1,188 +1,128 @@
-/* ===== 記賬本 · sync.js — 以 GitHub Gist 作跨裝置同步 ===== */
+/* ===== 記賬本 · sync.js — 備份碼雲端備份（kvdb.io，免登入、不會過期）===== */
 (function (global) {
   'use strict';
 
-  const FILE = 'wallet-book-data.json';
-  const API = 'https://api.github.com';
-  let status = 'off';   // off | ok | busy | err
-  let timer = null;
-  let running = false;
+  const ROOT = 'https://kvdb.io/';
+  const DATA_KEY = 'ledger';
+  let busy = false;
   let lastErr = '';
+  let status = 'off';
+  let timer = null;
 
-  function cfg() { return Store.get().settings.sync || {}; }
-
-  function headers() {
-    const c = cfg();
-    return {
-      'Authorization': 'Bearer ' + c.token,
-      'Accept': 'application/vnd.github+json',
-      'Content-Type': 'application/json'
-    };
+  function cfg() { return Store.get().settings; }
+  function cloud() {
+    if (!cfg().cloud) cfg().cloud = { code: '', lastSync: 0, auto: true };
+    if (cfg().cloud.auto === undefined) cfg().cloud.auto = true;
+    return cfg().cloud;
   }
+  function configured() { return !!cloud().code; }
 
   function setStatus(s, msg) {
     status = s;
-    if (msg) lastErr = msg;
+    if (msg !== undefined) lastErr = msg;
     if (global.UI && UI.updateSyncDot) UI.updateSyncDot(s);
   }
 
-  function configured() {
-    const c = cfg();
-    return !!(c.token && c.gistId);
-  }
-
-  async function pull() {
-    const c = cfg();
-    const res = await fetch(API + '/gists/' + encodeURIComponent(c.gistId), {
-      headers: headers(), cache: 'no-store'
+  async function createCode() {
+    const res = await fetch(ROOT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'email=wallet-book@example.com'
     });
-    if (!res.ok) {
-      let detail = '';
-      try { const b = await res.json(); detail = b && b.message ? b.message : ''; } catch (e) {}
-      if (res.status === 401) throw new Error('權杖無效或已過期' + (detail ? '（' + detail + '）' : ''));
-      if (res.status === 404) throw new Error('找不到 Gist，請重新建立');
-      throw new Error('讀取失敗（HTTP ' + res.status + '）' + (detail ? '：' + detail : ''));
-    }
-    const json = await res.json();
-    const f = json.files && json.files[FILE];
-    if (!f) return null;
-    let content = f.content;
-    if (f.truncated && f.raw_url) {
-      const raw = await fetch(f.raw_url, { headers: { Authorization: 'Bearer ' + c.token }, cache: 'no-store' });
-      content = await raw.text();
-    }
-    try { return JSON.parse(content); } catch (e) { return null; }
-  }
-
-  async function push(data) {
-    const c = cfg();
-    const res = await fetch(API + '/gists/' + encodeURIComponent(c.gistId), {
-      method: 'PATCH',
-      headers: headers(),
-      body: JSON.stringify({ files: { [FILE]: { content: JSON.stringify(data) } } })
-    });
-    if (!res.ok) {
-      let detail = '';
-      try { const b = await res.json(); detail = b && b.message ? b.message : ''; } catch (e) {}
-      throw new Error('寫入失敗（HTTP ' + res.status + '）' + (detail ? '：' + detail : ''));
-    }
-    return true;
-  }
-
-  async function findGist() {
-    const res = await fetch(API + '/gists?per_page=100', { headers: headers(), cache: 'no-store' });
-    if (res.status === 401) throw new Error('權杖無效或已過期');
-    if (!res.ok) throw new Error('讀取 Gist 清單失敗（HTTP ' + res.status + '）');
-    const list = await res.json();
-    if (!Array.isArray(list)) return null;
-    for (let i = 0; i < list.length; i++) {
-      const g = list[i];
-      if (g && g.files && g.files[FILE]) return g.id;
-    }
-    return null;
-  }
-
-  /* 自動接回已有的雲端備份；沒有才建立新的 */
-  async function ensureGist() {
-    const c = cfg();
-    if (!c.token) throw new Error('請先貼上權杖');
-    if (c.gistId) return c.gistId;
-    let id = null;
-    try { id = await findGist(); } catch (e) {
-      if (e.message.indexOf('權杖') >= 0) throw e;
-    }
-    if (!id) id = await createGist();
-    const s = Store.get().settings;
-    s.sync.gistId = id;
-    Store.get().settingsUpdatedAt = U.nowMs();
+    if (!res.ok) throw new Error('建立備份碼失敗（HTTP ' + res.status + '）');
+    const id = (await res.text()).trim();
+    if (!/^[A-Za-z0-9_-]{10,64}$/.test(id)) throw new Error('伺服器回應不正確');
+    const c = cloud();
+    c.code = id;
+    c.lastSync = 0;
     Store.save({ silent: true });
     return id;
   }
 
-  async function createGist() {
-    const c = cfg();
-    const res = await fetch(API + '/gists', {
-      method: 'POST',
-      headers: headers(),
-      body: JSON.stringify({
-        description: '記賬本資料（請勿刪除）',
-        public: false,
-        files: { [FILE]: { content: JSON.stringify(Store.get()) } }
-      })
-    });
-    if (!res.ok) throw new Error('建立 Gist 失敗（HTTP ' + res.status + '）');
-    const json = await res.json();
-    const s = Store.get().settings;
-    s.sync.gistId = json.id;
-    Store.get().settingsUpdatedAt = U.nowMs();
-    Store.save({ silent: true });
-    return json.id;
+  function url() {
+    return ROOT + encodeURIComponent(cloud().code) + '/' + DATA_KEY;
   }
 
-  async function doSync(opts) {
-    const c = cfg();
-    if (!c.token) { setStatus('off'); return { ok: false, msg: '未設定同步' }; }
-    if (running) return { ok: false, msg: '同步進行中' };
-    running = true;
+  async function backup(opts) {
+    if (!configured()) return { ok: false, msg: '尚未建立備份碼' };
+    if (busy) return { ok: false, msg: '進行中' };
+    if (!navigator.onLine) { setStatus('off'); return { ok: false, msg: '目前離線' }; }
+    busy = true;
     setStatus('busy');
     try {
-      if (!cfg().gistId) await ensureGist();
-      const remote = await pull();
-      if (remote) {
-        const merged = DBmerge.mergeData(Store.get(), remote);
-        Store.replace(merged);
-        Store.get().updatedAt = U.nowMs();
-        // 保存到本機（不觸發再次同步）
-        try { localStorage.setItem('hkb_ledger_v1', JSON.stringify(Store.get())); } catch (e) {}
-      }
-      await push(Store.get());
-      const s = Store.get().settings;
-      s.sync.lastSync = U.nowMs();
-      Store.get().settingsUpdatedAt = U.nowMs();
-      try { localStorage.setItem('hkb_ledger_v1', JSON.stringify(Store.get())); } catch (e) {}
+      const res = await fetch(url(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Store.get())
+      });
+      if (!res.ok) throw new Error('上傳失敗（HTTP ' + res.status + '）');
+      cloud().lastSync = Date.now();
+      Store.get().settingsUpdatedAt = Date.now();
+      Store.save({ silent: true });
+      busy = false;
       setStatus('ok');
       if (!opts || !opts.quiet) {
-        if (global.UI) UI.toast('同步完成');
+        if (global.UI) UI.toast('已備份到雲端');
         if (global.UI) UI.render();
       }
-      running = false;
-      return { ok: true, msg: '同步完成' };
+      return { ok: true, msg: '已備份' };
     } catch (e) {
-      console.error(e);
+      busy = false;
       setStatus('err', e.message);
-      running = false;
-      if (!opts || !opts.quiet) {
-        if (global.UI) UI.toast('同步失敗：' + e.message, 3000);
-      }
+      if (!opts || !opts.quiet) { if (global.UI) UI.toast('備份失敗：' + e.message, 3000); }
       return { ok: false, msg: e.message };
     }
   }
 
-  function schedule() {
-    const c = cfg();
-    if (!c.auto || !c.token || !c.gistId) return;
-    clearTimeout(timer);
-    timer = setTimeout(function () { doSync({ quiet: true }); }, 4000);
+  async function restore(code) {
+    const c = cloud();
+    if (code) c.code = String(code).trim();
+    if (!c.code) return { ok: false, msg: '請輸入備份碼' };
+    try {
+      const res = await fetch(url(), { cache: 'no-store' });
+      if (res.status === 404) return { ok: false, msg: '找不到這個備份碼' };
+      if (!res.ok) return { ok: false, msg: '讀取失敗（HTTP ' + res.status + '）' };
+      const text = await res.text();
+      if (!text || text === 'null') return { ok: false, msg: '雲端沒有資料' };
+      const obj = JSON.parse(text);
+      if (!obj || !Array.isArray(obj.txns)) return { ok: false, msg: '備份格式不正確' };
+      Store.replace(DBmerge.mergeData(Store.get(), obj));
+      Store.save({ silent: true });
+      setStatus('ok');
+      return { ok: true, msg: '已還原雲端備份' };
+    } catch (e) {
+      return { ok: false, msg: e.message || '還原失敗' };
+    }
   }
 
-  function statusText() {
-    const c = cfg();
-    if (!c.token || !c.gistId) return '未啟用';
-    if (status === 'err') return '同步失敗：' + lastErr;
+  function schedule() {
+    if (!configured() || !cfg().cloud.auto) return;
+    clearTimeout(timer);
+    timer = setTimeout(function () { backup({ quiet: true }); }, 6000);
+  }
+
+  function label() {
+    const c = cloud();
+    if (!c.code) return '未啟用';
+    if (status === 'err') return '備份失敗：' + lastErr;
     if (c.lastSync) {
       const d = new Date(c.lastSync);
       const p = function (n) { return String(n).padStart(2, '0'); };
-      return '上次同步：' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+      return '上次備份：' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
         ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
     }
-    return '已設定，尚未同步';
+    return '已建立備份碼，尚未備份';
   }
 
   global.Sync = {
-    pull: pull, push: push, sync: doSync, schedule: schedule, createGist: createGist,
-    findGist: findGist, ensureGist: ensureGist,
-    configured: configured, statusText: statusText,
-    get status() { return status; },
-    FILE: FILE
+    configured: configured,
+    createCode: createCode,
+    backup: backup,
+    restore: restore,
+    schedule: schedule,
+    label: label,
+    statusText: label,
+    sync: backup,
+    get status() { return status; }
   };
 })(window);

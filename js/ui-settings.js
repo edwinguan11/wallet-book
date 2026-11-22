@@ -59,17 +59,6 @@
     });
     html += '<div style="margin-top:12px"><button class="btn block" id="addWallet">＋ 新增錢包或支付方式</button></div></div>';
 
-    html += '<div class="h-sec">同步（跨裝置）</div><div class="card">' +
-      '<div class="row between"><div><div style="font-size:14px;font-weight:600">GitHub Gist 同步</div>' +
-      '<div class="mini-k" id="syncStatusTxt">' + esc(Sync.statusText()) + '</div></div>' +
-      '<button class="btn sm primary" id="syncNow">立即同步</button></div>' +
-      (s.sync.gistId ? '<div class="help" style="margin-top:10px">Gist ID（另一部裝置要填這個）：<br>' +
-        '<code id="gidTxt" style="word-break:break-all">' + esc(s.sync.gistId) + '</code> ' +
-        '<button class="btn sm" id="copyGid" style="margin-left:6px">複製</button></div>' : '') +
-      '<div style="margin-top:12px"><button class="btn block" id="syncSetup">設定同步</button></div>' +
-      '<div style="margin-top:8px"><button class="btn block" id="syncQR">📱 用手機掃碼同步</button></div>' +
-      '</div>';
-
     html += '<div class="h-sec">分類</div><div class="card">' +
       '<div class="row between"><span class="mini-k">支出 ' + Data.categories('expense').length +
       ' 個 · 收入 ' + Data.categories('income').length + ' 個</span>' +
@@ -390,20 +379,12 @@
     });
     const aw = $('#addWallet'); if (aw) aw.onclick = function () { editWallet(null); };
     const ac = $('#addCat'); if (ac) ac.onclick = function () { editCat(null); };
-    const ss = $('#syncSetup'); if (ss) ss.onclick = syncSetup;
-    const qb = $('#syncQR'); if (qb) qb.onclick = showSyncQR;
-    const cg = $('#copyGid'); if (cg) cg.onclick = function () {
-      const t = $('#gidTxt').textContent;
-      if (navigator.clipboard) navigator.clipboard.writeText(t).then(function () { UI.toast('已複製 Gist ID'); });
-      else UI.toast('請長按選取複製');
-    };
-    const sn = $('#syncNow'); if (sn) sn.onclick = async function () {
-      if (!Sync.configured()) { syncSetup(); return; }
-      sn.disabled = true; sn.textContent = '同步中…';
-      await Sync.sync();
-      sn.disabled = false; sn.textContent = '立即同步';
-      UI.render();
-    };
+
+
+
+
+
+;
     const rr = $('#refreshRates'); if (rr) rr.onclick = async function () {
       rr.disabled = true; rr.textContent = '更新中…';
       const r = await Rates.update({ force: true });

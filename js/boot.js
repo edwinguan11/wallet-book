@@ -31,7 +31,7 @@
       if (!Sync.configured()) {
         UI.state.tab = 'setting';
         UI.render();
-        UI.toast('請先在下方設定同步');
+        UI.toast('請到「資料」匯出備份檔案');
         return;
       }
       Sync.sync();
