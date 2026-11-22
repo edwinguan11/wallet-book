@@ -125,6 +125,18 @@
       b.classList.toggle('on', b.dataset.tab === UI.state.tab);
     });
     document.body.dataset.tab = UI.state.tab;
+
+    // 分頁切換過渡（同一頁重繪不播放，避免閃爍）
+    const order = ['add', 'list', 'stats', 'settle', 'setting'];
+    const tab = UI.state.tab;
+    if (tab !== UI._prevTab) {
+      const back = order.indexOf(tab) < order.indexOf(UI._prevTab || tab);
+      view.classList.remove('page-in', 'back');
+      void view.offsetWidth;          // 強制重排，讓動畫重新播放
+      if (back) view.classList.add('back');
+      view.classList.add('page-in');
+      UI._prevTab = tab;
+    }
   };
 
   /* ---------- 月份切換（通用） ---------- */

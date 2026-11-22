@@ -183,6 +183,10 @@
           const v = d.amount === '' ? '0' : d.amount;
           el.textContent = v;
           el.classList.toggle('zero', v === '0');
+          el.classList.remove('bump');
+          void el.offsetWidth;
+          el.classList.add('bump');
+          setTimeout(function () { el.classList.remove('bump'); }, 180);
         }
         const cl = $('#convLine');
         if (cl) cl.textContent = convText();
