@@ -79,9 +79,30 @@
     });
   }
 
+  /* ---------- 以一鍵連結／ QR 碼設定同步 ---------- */
+  function applyHashSync() {
+    const h = location.hash || '';
+    const m = h.match(/sync=([^&]+)/);
+    if (!m) return false;
+    try {
+      const json = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1])))));
+      const db = Store.get();
+      if (json.t) db.settings.sync.token = json.t;
+      if (json.g) db.settings.sync.gistId = json.g;
+      db.settings.sync.auto = true;
+      db.settingsUpdatedAt = U.nowMs();
+      Store.save({ silent: true });
+      history.replaceState(null, '', location.pathname + location.search);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /* ---------- 啟動 ---------- */
   function boot() {
     Store.load();
+    const hashApplied = applyHashSync();
     UI.applyTheme(Store.get().settings.theme);
     UI.state.month = U.thisMonth();
     buildShell();
@@ -89,7 +110,10 @@
     const start = function () {
       UI.render();
       UI.updateSyncDot(Sync.configured() ? (Sync.status === 'ok' ? 'ok' : '') : 'off');
-      if (Sync.configured()) {
+      if (hashApplied) {
+        UI.toast('同步設定已套用，正在同步…', 2400);
+        setTimeout(function () { Sync.sync(); }, 900);
+      } else if (Sync.configured()) {
         setTimeout(function () { Sync.sync({ quiet: true }); }, 1200);
       }
       if (!Store.get().settings.onboarded) {
