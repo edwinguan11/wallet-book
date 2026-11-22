@@ -41,11 +41,11 @@
     return workerP;
   }
 
-  /* 影像前處理：綠色通道（紅色金額字會變深）＋ 放大 ＋ 提高對比 */
+  /* 影像前處理：灰階（亮度），小圖才放大。實測原尺寸＋灰階準確度最高 */
   function preprocess(img, opts) {
     opts = opts || {};
-    const maxW = opts.maxWidth || 1900;
-    const scale = Math.min(2, Math.max(1, maxW / img.naturalWidth));
+    const small = img.naturalWidth < 900;
+    const scale = small ? 2 : 1;
     const w = Math.round(img.naturalWidth * scale);
     const h = Math.round(img.naturalHeight * scale);
 
@@ -63,10 +63,8 @@
 
     const imgData = pctx.getImageData(0, 0, w, h);
     const d = imgData.data;
-    const k = 1.9;
     for (let i = 0; i < d.length; i += 4) {
-      let v = (d[i + 1] - 128) * k + 128;   // 綠色通道 + 對比
-      if (v < 0) v = 0; else if (v > 255) v = 255;
+      const v = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
       d[i] = d[i + 1] = d[i + 2] = v;
     }
     pctx.putImageData(imgData, 0, 0);
