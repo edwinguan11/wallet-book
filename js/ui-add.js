@@ -23,6 +23,15 @@
     return head.concat(rest);
   }
 
+  function convText() {
+    const d = draft();
+    if (!d.currency || d.currency === 'HKD') return '';
+    const rate = Number((Store.get().settings.rates || {})[d.currency]) || 1;
+    const amt = parseFloat(d.amount) || 0;
+    const hkd = Math.round(amt * rate * 100) / 100;
+    return '1 ' + d.currency + ' ≈ HK$' + rate + '　·　合共 HK$' + hkd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
   function amountText() {
     const d = draft();
     const v = d.amount === '' ? '0' : d.amount;
@@ -81,7 +90,7 @@
     const d = draft();
     if (!d.walletId) d.walletId = Store.get().settings.defaultWallet || 'w_octopus';
     if (!d.categoryId) d.categoryId = 'c_food';
-    if (!d.currency) d.currency = 'HKD';
+    if (!d.currency) d.currency = (Data.wallet(d.walletId).currency) || 'HKD';
 
     const typeRow = '<div class="seg">' +
       ['expense', 'income', 'transfer'].map(function (t) {
@@ -94,6 +103,8 @@
       esc(SYM[d.currency] || d.currency) + '</span>' +
       '<span class="val ' + (amountText() === '0' ? 'zero' : '') + '" id="amtVal">' + esc(amountText()) + '</span>' +
       '</div>';
+
+    const conv = '<div class="conv" id="convLine">' + convText() + '</div>';
 
     const nl = '<div class="nlbar"><input id="nlInput" type="text" placeholder="一句記賬：午餐 45 八達通" autocomplete="off">' +
       '<button id="nlGo">記</button></div>';
@@ -111,7 +122,7 @@
       keys.map(function (k) { return '<button class="key" data-k="' + k + '">' + k + '</button>'; }).join('') +
       '</div><button class="save-btn" id="saveBtn">記一筆</button></div>';
 
-    return typeRow + amountBox + nl + body + meta + keypad;
+    return typeRow + amountBox + conv + nl + body + meta + keypad;
   };
 
   UI.afterRenderHooks = UI.afterRenderHooks || {};
@@ -132,8 +143,11 @@
     });
     $$('[data-w]').forEach(function (b) {
       b.onclick = function () {
-        if (d.type === 'transfer') { d.walletId = b.dataset.w; UI.render(); }
-        else { d.walletId = b.dataset.w; UI.render(); }
+        d.walletId = b.dataset.w;
+        // 錢包自帶貨幣：選人民幣錢包就自動用 ¥
+        const w = Data.wallet(b.dataset.w);
+        if (d.type !== 'transfer') d.currency = w.currency || 'HKD';
+        UI.render();
       };
     });
     $$('[data-tw]').forEach(function (b) {
@@ -170,6 +184,8 @@
           el.textContent = v;
           el.classList.toggle('zero', v === '0');
         }
+        const cl = $('#convLine');
+        if (cl) cl.textContent = convText();
         if (navigator.vibrate && k !== '⌫') navigator.vibrate(6);
       };
     });

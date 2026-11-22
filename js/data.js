@@ -5,7 +5,7 @@
   'use strict';
 
   const KEY = 'hkb_ledger_v1';
-  const SCHEMA = 1;
+  const SCHEMA = 2;
 
   /* ---------- 小工具 ---------- */
   function uid(prefix) {
@@ -56,12 +56,15 @@
   /* ---------- 預設錢包 ---------- */
   const SEED_WALLETS = [
     { id: 'w_cash',      name: '現金',        type: 'cash',          icon: '💵', color: '#4ade80', opening: 0 },
+    { id: 'w_cash_cny',  name: '人民幣現金',  type: 'cash',          icon: '💴', color: '#eab308', opening: 0, currency: 'CNY' },
     { id: 'w_octopus',   name: '八達通',      type: 'octopus',       icon: '🐙', color: '#f97316', opening: 0 },
     { id: 'w_octo_m',    name: '手機八達通',  type: 'octopus',       icon: '📱', color: '#fb923c', opening: 0 },
     { id: 'w_octo_w',    name: '八達通銀包',  type: 'emoney',        icon: '👛', color: '#f59e0b', opening: 0 },
     { id: 'w_payme',     name: 'PayMe',       type: 'emoney',        icon: '💗', color: '#ec4899', opening: 0 },
     { id: 'w_alipayhk',  name: 'AlipayHK',    type: 'emoney',        icon: '🔵', color: '#1677ff', opening: 0 },
     { id: 'w_wechat',    name: 'WeChat Pay HK', type: 'emoney',      icon: '🟢', color: '#22c55e', opening: 0 },
+    { id: 'w_wechat_cn', name: '微信支付（大陸）', type: 'emoney',    icon: '💬', color: '#17b26a', opening: 0, currency: 'CNY' },
+    { id: 'w_alipay_cn', name: '支付寶（大陸）', type: 'emoney',      icon: '🅰️', color: '#0b84ff', opening: 0, currency: 'CNY' },
     { id: 'w_bocpay',    name: 'BoC Pay',     type: 'emoney',        icon: '🏦', color: '#c8102e', opening: 0 },
     { id: 'w_tapngo',    name: 'Tap & Go',    type: 'emoney',        icon: '📶', color: '#e11d48', opening: 0 },
     { id: 'w_unionpay',  name: '雲閃付',      type: 'emoney',        icon: '⭐', color: '#dc2626', opening: 0 },
@@ -154,7 +157,7 @@
       updatedAt: nowMs(),
       settingsUpdatedAt: nowMs(),
       wallets: SEED_WALLETS.map(function (w) {
-        return Object.assign({}, w, { updatedAt: 1, deleted: false, currency: 'HKD', note: '' });
+        return Object.assign({}, w, { updatedAt: 1, deleted: false, currency: w.currency || 'HKD', note: '' });
       }),
       categories: buildCats().map(function (c) { return Object.assign({}, c, { updatedAt: 1, deleted: false }); }),
       txns: [],
@@ -227,7 +230,7 @@
   function migrate(d) {
     const base = freshData();
     const out = Object.assign({}, base, d);
-    out.wallets = Array.isArray(d.wallets) ? d.wallets : base.wallets;
+    out.wallets = (Array.isArray(d.wallets) ? d.wallets : base.wallets).slice();
     out.categories = Array.isArray(d.categories) ? d.categories : base.categories;
     out.txns = Array.isArray(d.txns) ? d.txns : [];
     out.budgets = Array.isArray(d.budgets) ? d.budgets : [];
@@ -235,6 +238,19 @@
     out.settings = Object.assign({}, base.settings, d.settings || {});
     out.settings.rates = Object.assign({}, base.settings.rates, (d.settings || {}).rates || {});
     out.settings.sync = Object.assign({}, base.settings.sync, (d.settings || {}).sync || {});
+    // v2：補回新增的支付方式（只執行一次）
+    if (!out.settings.seededV2) {
+      const have = {};
+      out.wallets.forEach(function (w) { have[w.id] = true; });
+      SEED_WALLETS.forEach(function (w) {
+        if (!have[w.id]) {
+          out.wallets.push(Object.assign({}, w, {
+            updatedAt: nowMs(), deleted: false, currency: w.currency || 'HKD', note: ''
+          }));
+        }
+      });
+      out.settings.seededV2 = true;
+    }
     out.schema = SCHEMA;
     return out;
   }

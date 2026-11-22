@@ -51,6 +51,7 @@
         '<span style="font-size:17px">' + esc(w.icon) + '</span>' +
         '<span class="grow ellip">' + esc(w.name) + '<div class="mini-k">' +
         esc((CONST.WALLET_TYPES.find(function (x) { return x.id === w.type; }) || {}).label || '其他') +
+        (w.currency && w.currency !== 'HKD' ? ' · ' + w.currency : '') +
         '</div></span>' +
         '<span class="mono" style="font-size:13px;' + (bal < 0 ? 'color:var(--red)' : '') + '">' +
         U.fmtMoney(bal) + '</span>' +
@@ -131,6 +132,10 @@
           (c === w.color ? 'outline:2px solid ' + c + ';outline-offset:1px;' : '') + '">' +
           '<span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:' + c + '"></span></button>';
       }).join('') + '</div></div>' +
+      '<div><label class="fl">這個錢包使用的貨幣</label><select id="wCur">' +
+      ['HKD', 'CNY', 'JPY', 'TWD', 'KRW', 'THB', 'USD', 'GBP', 'EUR', 'SGD', 'MYR'].map(function (cc) {
+        return '<option value="' + cc + '"' + (cc === (w.currency || 'HKD') ? ' selected' : '') + '>' + cc + '</option>';
+      }).join('') + '</select></div>' +
       '<div><label class="fl">期初餘額（信用卡欠款請填負數）</label>' +
       '<input type="number" id="wOpen" step="0.01" value="' + (w.opening || 0) + '"></div>' +
       '</div><div class="sheet-actions">' +
@@ -159,6 +164,7 @@
         const patch = {
           name: name,
           type: root.querySelector('#wType').value,
+          currency: root.querySelector('#wCur').value,
           icon: icon, color: color,
           opening: parseFloat(root.querySelector('#wOpen').value) || 0,
           updatedAt: U.nowMs()
