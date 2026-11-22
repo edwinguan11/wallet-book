@@ -285,7 +285,7 @@ body[data-tab="add"] #toast { bottom: calc(var(--nav-h) + var(--safe-b) + 292px)
 }
 @keyframes fade { from { opacity: 0; } }
 .sheet {
-  width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto;
+  overflow-x: hidden; width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto;
   background: var(--card); border-radius: 20px 20px 0 0;
   border: 1px solid var(--line); border-bottom: none;
   padding: 8px 16px calc(20px + var(--safe-b));
@@ -471,13 +471,13 @@ body, .topbar, .tabbar, .card, .stat, .txn, .chip, .key, input, select, .sheet {
 /* 掃描賬單 */
 .scan-drop{border:1.5px dashed var(--line);border-radius:14px;padding:26px 14px;text-align:center;cursor:pointer;background:var(--card2);transition:background .15s}
 .scan-drop:active{background:var(--line)}
-.scan-row{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--line);animation:itemIn .25s var(--ease-out) both}
+.scan-row{display:grid;grid-template-columns:26px minmax(0,1fr) 82px;gap:10px;align-items:center;width:100%;padding:9px 0;border-bottom:1px solid var(--line);animation:itemIn .25s var(--ease-out) both}
 .scan-row.off{opacity:.4}
 .scan-chk{width:24px;height:24px;border-radius:7px;border:1px solid var(--line);background:var(--card2);color:var(--accent);font-weight:800;font-size:13px;flex:0 0 auto;display:grid;place-items:center}
-.scan-main{flex:1;min-width:0}
-.scan-desc{width:100%;padding:5px 8px;font-size:13.5px;background:transparent;border:1px solid transparent;border-radius:8px;font-weight:600}
+.scan-main{min-width:0;overflow:hidden}
+.scan-desc{width:100%;min-width:0;max-width:100%;padding:5px 8px;font-size:13.5px;background:transparent;border:1px solid transparent;border-radius:8px;font-weight:600}
 .scan-desc:focus{border-color:var(--accent);background:var(--card2)}
-.scan-meta{font-size:10.5px;color:var(--muted);margin-top:2px;padding-left:9px}
+.scan-meta{font-size:10.5px;color:var(--muted);margin-top:2px;padding-left:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .scan-cat{background:none;color:var(--muted);font-size:10.5px;padding:0}
-.scan-amt{width:76px;flex:0 0 auto;text-align:right;padding:6px 8px;font-size:13.5px;font-weight:700}
+.scan-amt{width:82px;min-width:0;text-align:right;padding:6px 8px;font-size:13.5px;font-weight:700}
 .nl-scan{padding:0 11px;border-radius:11px;background:var(--card2);border:1px solid var(--line);font-size:16px;line-height:1}
