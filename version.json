@@ -1,6 +1,6 @@
 {
-  "versionCode": 4,
-  "versionName": "1.0.3",
-  "apk": "https://edwinguan11.github.io/wallet-book/wallet-book-1.0.3.apk",
-  "notes": "1.0.3：App 內直接下載並安裝更新，不需要開瀏覽器。"
+  "versionCode": 5,
+  "versionName": "1.0.4",
+  "apk": "https://edwinguan11.github.io/wallet-book/wallet-book-1.0.4.apk",
+  "notes": "1.0.4：\n· 修正 APK 內無法開啟相簿／相機（掃描賬單）\n· 掃描時可直接拍照\n· 記錄頁新增「📷 掃描賬單」入口"
 }

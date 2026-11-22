@@ -61,8 +61,10 @@
       UI.statCard('結餘', U.fmtMoney(sum.net), sum.net < 0 ? 'neg' : 'pos') +
       '</div>';
 
-    html += '<div class="filters"><input id="qIn" type="search" placeholder="搜尋備註、分類、錢包、金額" value="' + esc(UI.state.listQuery) + '">' +
-      '<button class="btn sm" id="filterBtn">篩選' + ((UI.state.listCat || UI.state.listWallet) ? ' •' : '') + '</button></div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">' +
+      '<button class="btn" id="scanEntry">📷 掃描賬單</button>' +
+      '<button class="btn" id="filterBtn">篩選' + ((UI.state.listCat || UI.state.listWallet) ? ' •' : '') + '</button></div>' +
+      '<div class="filters"><input id="qIn" type="search" placeholder="搜尋備註、分類、錢包、金額" value="' + esc(UI.state.listQuery) + '"></div>';
 
     if (UI.state.listCat || UI.state.listWallet) {
       html += '<div class="chips" style="margin-bottom:6px">';
@@ -116,6 +118,8 @@
     }
     const fb = $('#filterBtn');
     if (fb) fb.onclick = openFilters;
+    const se = $('#scanEntry');
+    if (se) se.onclick = function () { UI.openScan(); };
     $$('[data-clear]').forEach(function (b) {
       b.onclick = function () {
         if (b.dataset.clear === 'cat') UI.state.listCat = '';
