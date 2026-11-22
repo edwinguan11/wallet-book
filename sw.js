@@ -1,5 +1,5 @@
 /* 記賬本 service worker — 離線快取（網絡優先，離線時回退快取） */
-const V = 'jzb-v1.3.0';
+const V = 'jzb-v1.4.0';
 const SHELL = [
   './',
   './index.html',

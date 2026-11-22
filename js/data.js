@@ -140,11 +140,11 @@
 
   function buildCats() {
     const out = [];
-    SEED_CATS.forEach(function (c) {
-      out.push({ id: c[0], name: c[1], icon: c[2], color: PALETTE_CAT[c[3] % PALETTE_CAT.length], kind: 'expense' });
+    SEED_CATS.forEach(function (c, i) {
+      out.push({ id: c[0], name: c[1], icon: c[2], color: PALETTE_CAT[c[3] % PALETTE_CAT.length], kind: 'expense', sort: i });
     });
-    SEED_INCOME.forEach(function (c) {
-      out.push({ id: c[0], name: c[1], icon: c[2], color: PALETTE_CAT[c[3] % PALETTE_CAT.length], kind: 'income' });
+    SEED_INCOME.forEach(function (c, i) {
+      out.push({ id: c[0], name: c[1], icon: c[2], color: PALETTE_CAT[c[3] % PALETTE_CAT.length], kind: 'income', sort: i });
     });
     return out;
   }
@@ -156,8 +156,8 @@
       schema: SCHEMA,
       updatedAt: nowMs(),
       settingsUpdatedAt: nowMs(),
-      wallets: SEED_WALLETS.map(function (w) {
-        return Object.assign({}, w, { updatedAt: 1, deleted: false, currency: w.currency || 'HKD', note: '' });
+      wallets: SEED_WALLETS.map(function (w, i) {
+        return Object.assign({}, w, { updatedAt: 1, deleted: false, currency: w.currency || 'HKD', note: '', sort: i });
       }),
       categories: buildCats().map(function (c) { return Object.assign({}, c, { updatedAt: 1, deleted: false }); }),
       txns: [],
@@ -239,6 +239,10 @@
     out.settings = Object.assign({}, base.settings, d.settings || {});
     out.settings.rates = Object.assign({}, base.settings.rates, (d.settings || {}).rates || {});
     out.settings.sync = Object.assign({}, base.settings.sync, (d.settings || {}).sync || {});
+    // 排序欄位（舊資料補上，按現有次序）
+    out.wallets.forEach(function (w, i) { if (typeof w.sort !== 'number') w.sort = i; });
+    out.categories.forEach(function (c, i) { if (typeof c.sort !== 'number') c.sort = i; });
+
     // v2：補回新增的支付方式（只執行一次）
     if (!out.settings.seededV2) {
       const have = {};
@@ -260,13 +264,21 @@
   function live(list) { return (list || []).filter(function (x) { return !x.deleted; }); }
 
   const Data = {
-    wallets: function () { return live(DB.wallets); },
+    wallets: function () {
+      return live(DB.wallets).slice().sort(function (a, b) {
+        return (a.sort == null ? 999 : a.sort) - (b.sort == null ? 999 : b.sort);
+      });
+    },
     wallet: function (id) {
       const w = (DB.wallets || []).find(function (x) { return x.id === id; });
       return w || { id: id, name: '（已刪除）', icon: '❓', color: '#667085', type: 'other', opening: 0 };
     },
     categories: function (kind) {
-      return live(DB.categories).filter(function (c) { return !kind || c.kind === kind; });
+      return live(DB.categories)
+        .filter(function (c) { return !kind || c.kind === kind; })
+        .sort(function (a, b) {
+          return (a.sort == null ? 999 : a.sort) - (b.sort == null ? 999 : b.sort);
+        });
     },
     category: function (id) {
       const c = (DB.categories || []).find(function (x) { return x.id === id; });

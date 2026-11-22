@@ -15,12 +15,9 @@
     return Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; }).slice(0, 4);
   }
 
+  /* 分類次序由「設定 → 排序」決定 */
   function orderedCats(kind) {
-    const all = Data.categories(kind);
-    const recent = recentCatIds(kind);
-    const head = recent.map(function (id) { return all.find(function (c) { return c.id === id; }); }).filter(Boolean);
-    const rest = all.filter(function (c) { return recent.indexOf(c.id) < 0; });
-    return head.concat(rest);
+    return Data.categories(kind);
   }
 
   const SHOW_CUR = ['HKD', 'CNY', 'JPY', 'USD', 'TWD'];

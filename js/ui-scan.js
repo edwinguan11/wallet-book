@@ -61,13 +61,13 @@
       };
 
       async function run(src) {
-        prog.textContent = '正在辨識…（首次使用需下載約 7MB 辨識資料）';
+        prog.textContent = '正在辨識…（首次使用需下載約 36MB 高精度辨識資料）';
         list.innerHTML = '';
         actions.style.display = 'none';
         try {
           const res = await OCR.recognize(imgEl, function (m) {
             if (m.status === 'loading language traineddata' || m.status === 'loading tesseract core') {
-              prog.textContent = '首次使用，正在下載辨識資料…';
+              prog.textContent = '首次使用，正在下載高精度辨識資料（約 36MB）…';
             } else if (m.status === 'recognizing text' && typeof m.progress === 'number') {
               prog.textContent = '辨識中… ' + Math.round(m.progress * 100) + '%';
             }

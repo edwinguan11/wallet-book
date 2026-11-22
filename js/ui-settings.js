@@ -72,12 +72,15 @@
       html += '<div style="margin-top:10px"><button class="btn block" id="toggleWallets">' +
         (expanded ? '收起錢包列表' : '顯示全部 ' + ws.length + ' 個錢包') + '</button></div>';
     }
-    html += '<div style="margin-top:8px"><button class="btn block" id="addWallet">＋ 新增錢包或支付方式</button></div></div>';
+    html += '<div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+      '<button class="btn" id="orderWallet">⇅ 排序</button>' +
+      '<button class="btn" id="addWallet">＋ 新增</button></div></div>';
 
     html += '<div class="h-sec">分類</div><div class="card">' +
       '<div class="row between"><span class="mini-k">支出 ' + Data.categories('expense').length +
       ' 個 · 收入 ' + Data.categories('income').length + ' 個</span>' +
-      '<button class="btn sm" id="addCat">＋ 新增</button></div>' +
+      '<span style="display:flex;gap:6px"><button class="btn sm" id="orderCat">⇅ 排序</button>' +
+      '<button class="btn sm" id="addCat">＋ 新增</button></span></div>' +
       '<div class="chips" style="flex-wrap:wrap;overflow:visible;gap:7px;margin-top:10px">';
     cats.forEach(function (c) {
       html += '<button class="chip" data-ec="' + c.id + '"><span class="ci">' + esc(c.icon) + '</span>' + esc(c.name) + '</button>';
@@ -370,6 +373,60 @@
       });
   }
 
+  /* ---------- 排序（記賬頁顯示次序） ---------- */
+  function openOrder(initialKind) {
+    let kind = initialKind || 'expense';
+
+    function items() {
+      if (kind === 'wallet') return Data.wallets();
+      return Data.categories(kind);
+    }
+
+    function move(arr, i, dir) {
+      const j = i + dir;
+      if (j < 0 || j >= arr.length) return;
+      arr.forEach(function (o, k) { o.sort = k; });
+      const a = arr[i], b2 = arr[j];
+      const t = a.sort; a.sort = b2.sort; b2.sort = t;
+      a.updatedAt = U.nowMs(); b2.updatedAt = U.nowMs();
+      Store.save();
+    }
+
+    function draw(root) {
+      const arr = items();
+      const tabs = [['expense', '支出分類'], ['income', '收入分類'], ['wallet', '錢包']];
+      let h = '<div class="seg three" style="margin-bottom:10px">' + tabs.map(function (t) {
+        return '<button data-k="' + t[0] + '" class="' + (kind === t[0] ? 'on' : '') + '">' + t[1] + '</button>';
+      }).join('') + '</div>';
+      h += '<div class="help" style="margin-bottom:10px">越上面越先出現在記賬頁。用 ▲ ▼ 調整次序，會即時套用。</div>';
+      h += '<div class="ord-list">';
+      arr.forEach(function (it, i) {
+        h += '<div class="ord-row">' +
+          '<span class="ord-ic">' + esc(it.icon) + '</span>' +
+          '<span class="grow ellip" style="font-size:13.5px">' + esc(it.name) + '</span>' +
+          '<button class="ord-btn" data-up="' + i + '"' + (i === 0 ? ' disabled' : '') + '>▲</button>' +
+          '<button class="ord-btn" data-dn="' + i + '"' + (i === arr.length - 1 ? ' disabled' : '') + '>▼</button>' +
+          '</div>';
+      });
+      h += '</div>';
+      root.innerHTML = '<h3>排序</h3>' + h +
+        '<div class="sheet-actions"><button class="btn primary" id="ordDone">完成</button></div>';
+
+      root.querySelectorAll('[data-k]').forEach(function (b) {
+        b.onclick = function () { kind = b.dataset.k; draw(root); };
+      });
+      root.querySelectorAll('[data-up]').forEach(function (b) {
+        b.onclick = function () { move(items(), +b.dataset.up, -1); draw(root); UI.render(); };
+      });
+      root.querySelectorAll('[data-dn]').forEach(function (b) {
+        b.onclick = function () { move(items(), +b.dataset.dn, 1); draw(root); UI.render(); };
+      });
+      root.querySelector('#ordDone').onclick = function () { UI.closeSheet(); UI.render(); };
+    }
+
+    UI.sheet('<h3>排序</h3>', function (root) { draw(root); });
+  }
+
   /* ---------- 密碼鎖 ---------- */
   function pinSetup() {
     const s = Store.get().settings;
@@ -400,6 +457,8 @@
       UI.state.walletsExpanded = !UI.state.walletsExpanded;
       UI.render();
     };
+    const ow = $('#orderWallet'); if (ow) ow.onclick = function () { openOrder('wallet'); };
+    const oc2 = $('#orderCat'); if (oc2) oc2.onclick = function () { openOrder('expense'); };
     const aw = $('#addWallet'); if (aw) aw.onclick = function () { editWallet(null); };
     const ac = $('#addCat'); if (ac) ac.onclick = function () { editCat(null); };
 

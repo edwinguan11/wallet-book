@@ -28,7 +28,7 @@
       return global.Tesseract.createWorker(['chi_tra', 'eng'], 1, {
         workerPath: V + 'worker.min.js',
         corePath: V + 'tesseract-core-lstm.wasm.js',
-        langPath: V + 'lang',
+        langPath: V + 'lang-hq',
         gzip: true,
         logger: function (m) {
           if (onProgress && m && m.status) onProgress(m);
