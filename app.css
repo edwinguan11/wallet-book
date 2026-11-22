@@ -467,3 +467,17 @@ body, .topbar, .tabbar, .card, .stat, .txn, .chip, .key, input, select, .sheet {
 .conv-row .cv.hl { color: var(--fg); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
 @keyframes cvIn { from { opacity: 0; transform: translateY(4px) scale(.96); } to { opacity: 1; transform: none; } }
 .conv-note { text-align: center; font-size: 10.5px; color: var(--muted); margin: -6px 0 8px; }
+
+/* 掃描賬單 */
+.scan-drop{border:1.5px dashed var(--line);border-radius:14px;padding:26px 14px;text-align:center;cursor:pointer;background:var(--card2);transition:background .15s}
+.scan-drop:active{background:var(--line)}
+.scan-row{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--line);animation:itemIn .25s var(--ease-out) both}
+.scan-row.off{opacity:.4}
+.scan-chk{width:24px;height:24px;border-radius:7px;border:1px solid var(--line);background:var(--card2);color:var(--accent);font-weight:800;font-size:13px;flex:0 0 auto;display:grid;place-items:center}
+.scan-main{flex:1;min-width:0}
+.scan-desc{width:100%;padding:5px 8px;font-size:13.5px;background:transparent;border:1px solid transparent;border-radius:8px;font-weight:600}
+.scan-desc:focus{border-color:var(--accent);background:var(--card2)}
+.scan-meta{font-size:10.5px;color:var(--muted);margin-top:2px;padding-left:9px}
+.scan-cat{background:none;color:var(--muted);font-size:10.5px;padding:0}
+.scan-amt{width:76px;flex:0 0 auto;text-align:right;padding:6px 8px;font-size:13.5px;font-weight:700}
+.nl-scan{padding:0 11px;border-radius:11px;background:var(--card2);border:1px solid var(--line);font-size:16px;line-height:1}

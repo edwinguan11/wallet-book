@@ -139,7 +139,8 @@
     const conv = '<div class="conv-row" id="convRow">' + convText() + '</div>' +
       '<div class="conv-note" id="convLine">' + convNote() + '</div>';
 
-    const nl = '<div class="nlbar"><input id="nlInput" type="text" placeholder="一句記賬：午餐 45 八達通" autocomplete="off">' +
+    const nl = '<div class="nlbar"><button class="nl-scan" id="scanBtn" title="掃描賬單">📷</button>' +
+      '<input id="nlInput" type="text" placeholder="一句記賬：午餐 45 八達通" autocomplete="off">' +
       '<button id="nlGo">記</button></div>';
 
     const body = d.type === 'transfer' ? rowTransfer() : (d.type === 'income' ? rowIncome() : rowExpense());
@@ -265,6 +266,9 @@
         UI.toast('已自動填入，請確認後儲存');
       };
     }
+
+    const scanBtn = $('#scanBtn');
+    if (scanBtn) scanBtn.onclick = function () { UI.openScan(); };
 
     const dateIn = $('#dateIn');
     if (dateIn) dateIn.onchange = function () { d.date = dateIn.value || U.today(); };
