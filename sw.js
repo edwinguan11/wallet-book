@@ -1,5 +1,5 @@
-/* 荷包記 service worker — offline shell cache */
-const V = 'hohbau-v1.0.0';
+/* 記賬本 service worker — 離線快取（網絡優先，離線時回退快取） */
+const V = 'jzb-v1.0.1';
 const SHELL = [
   './',
   './index.html',
@@ -29,9 +29,9 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== V).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== V).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
@@ -39,20 +39,23 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (url.origin !== location.origin) return; // never touch cross-origin (github api etc)
+  if (url.origin !== location.origin) return; // 絕不介入 GitHub API 等跨域請求
 
   e.respondWith(
-    caches.match(req).then((hit) => {
-      const net = fetch(req)
-        .then((res) => {
-          if (res && res.status === 200) {
-            const copy = res.clone();
-            caches.open(V).then((c) => c.put(req, copy));
-          }
-          return res;
+    fetch(req)
+      .then((res) => {
+        if (res && res.status === 200) {
+          const copy = res.clone();
+          caches.open(V).then((c) => c.put(req, copy));
+        }
+        return res;
+      })
+      .catch(() =>
+        caches.match(req).then((hit) => {
+          if (hit) return hit;
+          if (req.mode === 'navigate') return caches.match('./index.html');
+          return new Response('', { status: 504, statusText: 'offline' });
         })
-        .catch(() => hit);
-      return hit || net;
-    })
+      )
   );
 });
