@@ -44,8 +44,8 @@
   /* 影像前處理：灰階（亮度），小圖才放大。實測原尺寸＋灰階準確度最高 */
   function preprocess(img, opts) {
     opts = opts || {};
-    const small = img.naturalWidth < 900;
-    const scale = small ? 2 : 1;
+    // 實測：固定放大 2 倍（上限 2880px）＋灰階，準確度最好
+    const scale = Math.min(2, Math.max(1, 2880 / img.naturalWidth));
     const w = Math.round(img.naturalWidth * scale);
     const h = Math.round(img.naturalHeight * scale);
 
