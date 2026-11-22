@@ -295,7 +295,9 @@
       const save = function () {
         const s = Store.get().settings;
         s.sync.token = root.querySelector('#sToken').value.trim();
-        s.sync.gistId = root.querySelector('#sGist').value.trim();
+        const gv = root.querySelector('#sGist').value.trim();
+        // 不要把已有的 Gist ID 清空（避免誤按儲存就斷開連線）
+        s.sync.gistId = gv || (s.sync.gistId || '');
         s.sync.auto = root.querySelector('#sAuto').checked;
         Store.get().settingsUpdatedAt = U.nowMs();
         Store.save({ silent: true });
