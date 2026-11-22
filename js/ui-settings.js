@@ -284,7 +284,7 @@
       '<div><label class="fl">GitHub 權杖（Token）</label>' +
       '<input type="password" id="sToken" value="' + esc(c.token) + '" placeholder="github_pat_... 或 ghp_..."></div>' +
       '<div><label class="fl">Gist ID</label>' +
-      '<input type="text" id="sGist" value="' + esc(c.gistId) + '" placeholder="留空可按下方按鈕自動建立"></div>' +
+      '<input type="text" id="sGist" value="' + esc(c.gistId) + '" placeholder="可留空，會自動尋回雲端備份"></div>' +
       '<div class="row"><label style="flex:1;font-size:13.5px"><input type="checkbox" id="sAuto"' + (c.auto ? ' checked' : '') +
       ' style="width:auto;margin-right:8px">自動同步（修改後約 4 秒）</label></div>' +
       '</div>' +
@@ -304,10 +304,13 @@
       };
       root.querySelector('#sSave').onclick = async function () {
         save();
+        if (!Store.get().settings.sync.token) { UI.toast('請先貼上權杖'); return; }
         UI.closeSheet();
         UI.render();
-        const r = await Sync.sync();
-        if (r.ok) UI.toast('同步完成');
+        UI.toast('正在連接雲端備份…', 1600);
+        const r = await Sync.sync({ quiet: true });
+        UI.render();
+        UI.toast(r.ok ? '同步完成，兩部裝置已連接' : ('同步失敗：' + r.msg), 3400);
       };
       root.querySelector('#sMake').onclick = async function () {
         save();

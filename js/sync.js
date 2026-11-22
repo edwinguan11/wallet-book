@@ -69,6 +69,36 @@
     return true;
   }
 
+  async function findGist() {
+    const res = await fetch(API + '/gists?per_page=100', { headers: headers(), cache: 'no-store' });
+    if (res.status === 401) throw new Error('權杖無效或已過期');
+    if (!res.ok) throw new Error('讀取 Gist 清單失敗（HTTP ' + res.status + '）');
+    const list = await res.json();
+    if (!Array.isArray(list)) return null;
+    for (let i = 0; i < list.length; i++) {
+      const g = list[i];
+      if (g && g.files && g.files[FILE]) return g.id;
+    }
+    return null;
+  }
+
+  /* 自動接回已有的雲端備份；沒有才建立新的 */
+  async function ensureGist() {
+    const c = cfg();
+    if (!c.token) throw new Error('請先貼上權杖');
+    if (c.gistId) return c.gistId;
+    let id = null;
+    try { id = await findGist(); } catch (e) {
+      if (e.message.indexOf('權杖') >= 0) throw e;
+    }
+    if (!id) id = await createGist();
+    const s = Store.get().settings;
+    s.sync.gistId = id;
+    Store.get().settingsUpdatedAt = U.nowMs();
+    Store.save({ silent: true });
+    return id;
+  }
+
   async function createGist() {
     const c = cfg();
     const res = await fetch(API + '/gists', {
@@ -91,11 +121,12 @@
 
   async function doSync(opts) {
     const c = cfg();
-    if (!c.token || !c.gistId) { setStatus('off'); return { ok: false, msg: '未設定同步' }; }
+    if (!c.token) { setStatus('off'); return { ok: false, msg: '未設定同步' }; }
     if (running) return { ok: false, msg: '同步進行中' };
     running = true;
     setStatus('busy');
     try {
+      if (!cfg().gistId) await ensureGist();
       const remote = await pull();
       if (remote) {
         const merged = DBmerge.mergeData(Store.get(), remote);
@@ -149,6 +180,7 @@
 
   global.Sync = {
     pull: pull, push: push, sync: doSync, schedule: schedule, createGist: createGist,
+    findGist: findGist, ensureGist: ensureGist,
     configured: configured, statusText: statusText,
     get status() { return status; },
     FILE: FILE
