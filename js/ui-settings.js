@@ -67,8 +67,7 @@
         '<code id="gidTxt" style="word-break:break-all">' + esc(s.sync.gistId) + '</code> ' +
         '<button class="btn sm" id="copyGid" style="margin-left:6px">複製</button></div>' : '') +
       '<div style="margin-top:12px"><button class="btn block" id="syncSetup">設定同步</button></div>' +
-      (s.sync.token && s.sync.gistId
-        ? '<div style="margin-top:8px"><button class="btn block" id="syncQR">📱 用手機掃碼同步</button></div>' : '') +
+      '<div style="margin-top:8px"><button class="btn block" id="syncQR">📱 用手機掃碼同步</button></div>' +
       '</div>';
 
     html += '<div class="h-sec">分類</div><div class="card">' +
@@ -81,8 +80,11 @@
     });
     html += '</div></div>';
 
-    html += '<div class="h-sec">外幣匯率（兌港幣）</div><div class="card"><div class="help" style="margin-bottom:10px">' +
-      '記錄外幣消費時，金額會按此匯率換算為港幣統計。</div><div class="frm">';
+    html += '<div class="h-sec">外幣匯率（兌港幣）</div><div class="card">' +
+      '<div class="row between" style="margin-bottom:10px"><div class="help">記錄外幣消費時按此換算為港幣。</div>' +
+      '<button class="btn sm primary" id="refreshRates">更新匯率</button></div>' +
+      '<div class="mini-k" style="margin-bottom:10px">連網時自動更新（每 6 小時一次）· 上次更新：' +
+      esc(Rates ? Rates.label() : '—') + '</div><div class="frm">';
     Object.keys(s.rates).forEach(function (k) {
       html += '<div class="row"><span style="width:60px;font-size:13px">' + k + '</span>' +
         '<input type="number" step="0.0001" class="rateIn" data-r="' + k + '" value="' + s.rates[k] + '" style="flex:1;padding:7px 10px"></div>';
@@ -314,7 +316,10 @@
           root.querySelector('#sGist').value = id;
           UI.closeSheet();
           UI.render();
-          UI.toast('已建立 Gist，請在另一部裝置輸入相同權杖與 ID', 3200);
+          UI.toast('Gist 已建立，正在上傳資料…', 2200);
+          const r = await Sync.sync({ quiet: true });
+          UI.render();
+          UI.toast(r.ok ? '同步完成，已可掃碼連接手機' : ('同步失敗：' + r.msg), 3200);
         } catch (e) {
           UI.toast('建立失敗：' + e.message, 3000);
         }
@@ -325,7 +330,8 @@
   /* ---------- 手機掃碼同步 ---------- */
   function showSyncQR() {
     const c = Store.get().settings.sync;
-    if (!c.token || !c.gistId) { UI.toast('請先貼上權杖並建立 Gist'); return; }
+    if (!c.token) { UI.toast('請先按「設定同步」貼上權杖'); return; }
+    if (!c.gistId) { UI.toast('請先按「③ 建立新的 Gist」'); return; }
     const payload = JSON.stringify({ t: c.token, g: c.gistId });
     const b64 = btoa(unescape(encodeURIComponent(payload)));
     const url = location.origin + location.pathname + '#sync=' + encodeURIComponent(b64);
@@ -391,6 +397,12 @@
       sn.disabled = true; sn.textContent = '同步中…';
       await Sync.sync();
       sn.disabled = false; sn.textContent = '立即同步';
+      UI.render();
+    };
+    const rr = $('#refreshRates'); if (rr) rr.onclick = async function () {
+      rr.disabled = true; rr.textContent = '更新中…';
+      const r = await Rates.update({ force: true });
+      UI.toast(r.ok ? '匯率已更新' : ('更新失敗：' + r.msg), 2600);
       UI.render();
     };
     const sr = $('#saveRates'); if (sr) sr.onclick = function () {

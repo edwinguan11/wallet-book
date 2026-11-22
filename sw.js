@@ -1,5 +1,5 @@
 /* 記賬本 service worker — 離線快取（網絡優先，離線時回退快取） */
-const V = 'jzb-v1.1.0';
+const V = 'jzb-v1.2.0';
 const SHELL = [
   './',
   './index.html',
@@ -14,6 +14,7 @@ const SHELL = [
   './js/ui-settle.js',
   './js/qrcode.js',
   './js/ui-settings.js',
+  './js/rates.js',
   './js/sync.js',
   './js/boot.js',
   './icons/icon-192.png',

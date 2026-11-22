@@ -36,9 +36,13 @@
     const res = await fetch(API + '/gists/' + encodeURIComponent(c.gistId), {
       headers: headers(), cache: 'no-store'
     });
-    if (res.status === 401) throw new Error('權杖無效或已過期');
-    if (res.status === 404) throw new Error('找不到 Gist，請重新建立');
-    if (!res.ok) throw new Error('讀取失敗（HTTP ' + res.status + '）');
+    if (!res.ok) {
+      let detail = '';
+      try { const b = await res.json(); detail = b && b.message ? b.message : ''; } catch (e) {}
+      if (res.status === 401) throw new Error('權杖無效或已過期' + (detail ? '（' + detail + '）' : ''));
+      if (res.status === 404) throw new Error('找不到 Gist，請重新建立');
+      throw new Error('讀取失敗（HTTP ' + res.status + '）' + (detail ? '：' + detail : ''));
+    }
     const json = await res.json();
     const f = json.files && json.files[FILE];
     if (!f) return null;
@@ -57,7 +61,11 @@
       headers: headers(),
       body: JSON.stringify({ files: { [FILE]: { content: JSON.stringify(data) } } })
     });
-    if (!res.ok) throw new Error('寫入失敗（HTTP ' + res.status + '）');
+    if (!res.ok) {
+      let detail = '';
+      try { const b = await res.json(); detail = b && b.message ? b.message : ''; } catch (e) {}
+      throw new Error('寫入失敗（HTTP ' + res.status + '）' + (detail ? '：' + detail : ''));
+    }
     return true;
   }
 

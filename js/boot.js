@@ -116,6 +116,7 @@
       } else if (Sync.configured()) {
         setTimeout(function () { Sync.sync({ quiet: true }); }, 1200);
       }
+      if (global.Rates) Rates.auto();
       if (!Store.get().settings.onboarded) {
         setTimeout(showWelcome, 700);
       }
