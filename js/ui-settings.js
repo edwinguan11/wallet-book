@@ -7,6 +7,14 @@
     '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#ec4899', '#f43f5e', '#ef4444', '#6b7280'];
 
   function download(name, text, mime) {
+    // 在 Android App 內：交給原生儲存到「下載」資料夾
+    try {
+      if (window.AndroidBridge && window.AndroidBridge.saveFile) {
+        const b64 = btoa(unescape(encodeURIComponent(text)));
+        window.AndroidBridge.saveFile(name, mime || 'application/json', b64);
+        return;
+      }
+    } catch (e) { /* 落回瀏覽器下載 */ }
     const blob = new Blob([text], { type: mime || 'application/json;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -97,6 +105,9 @@
       '<button class="btn sm" id="pinBtn">' + (s.pin ? '已開啟（更改／關閉）' : '未開啟') + '</button></div></div>';
 
     html += '<div class="h-sec">關於</div><div class="card">' +
+      '<div class="row between" style="margin-bottom:10px"><span style="font-size:14px;font-weight:600">Android App</span>' +
+      '<a class="btn sm primary" href="wallet-book.apk" download>下載 APK</a></div>' +
+      '<div class="help" style="margin-bottom:12px">安裝後可離線使用，資料存在手機內。App 會自動載入最新網頁版，功能更新不需要重新安裝。</div>' +
       '<div class="help"><b>記賬本</b> v1.0.0 · 香港支付方式全覆蓋<br>' +
       '所有資料預設儲存在此裝置的瀏覽器內，不會上傳到任何伺服器（同步功能只會寫入你自己的私有 Gist）。<br><br>' +
       '小提示：在手機瀏覽器選單中選擇「加到主畫面」，即可像 App 一樣使用。</div></div>';
