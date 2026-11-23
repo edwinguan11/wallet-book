@@ -5,7 +5,7 @@
   'use strict';
 
   const KEY = 'hkb_ledger_v1';
-  const SCHEMA = 2;
+  const SCHEMA = 4;
 
   /* ---------- 小工具 ---------- */
   function uid(prefix) {
@@ -163,6 +163,9 @@
       txns: [],
       budgets: [],
       groups: [],
+      recurring: [],
+      loans: [],
+      goals: [],
       settings: {
         theme: 'dark',
         baseCurrency: 'HKD',
@@ -173,6 +176,9 @@
         defaultWallet: 'w_octopus',
         lastMonth: thisMonth(),
         sync: { token: '', gistId: '', auto: true, lastSync: 0 },
+        monthlyBudget: 0,
+        autoBackup: true,
+        lastAutoBackup: 0,
         onboarded: false
       }
     };
@@ -237,6 +243,9 @@
     out.txns = Array.isArray(d.txns) ? d.txns : [];
     out.budgets = Array.isArray(d.budgets) ? d.budgets : [];
     out.groups = Array.isArray(d.groups) ? d.groups : [];
+    out.recurring = Array.isArray(d.recurring) ? d.recurring.slice() : [];
+    out.loans = Array.isArray(d.loans) ? d.loans.slice() : [];
+    out.goals = Array.isArray(d.goals) ? d.goals.slice() : [];
     out.settings = Object.assign({}, base.settings, d.settings || {});
     out.settings.rates = Object.assign({}, base.settings.rates, (d.settings || {}).rates || {});
     out.settings.sync = Object.assign({}, base.settings.sync, (d.settings || {}).sync || {});
@@ -300,6 +309,69 @@
     },
     budgets: function () { return live(DB.budgets); },
     groups: function () { return live(DB.groups); },
+    recurring: function () {
+      return live(DB.recurring).sort(function (a, b) { return (a.day || 1) - (b.day || 1); });
+    },
+    loans: function () {
+      return live(DB.loans).slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    },
+    goals: function () { return live(DB.goals); },
+
+    /* 借貸未結清 */
+    loanStats: function () {
+      let out = 0, inn = 0;
+      Data.loans().forEach(function (l) {
+        if (l.settled) return;
+        if (l.direction === 'in') inn += Number(l.amount) || 0;
+        else out += Number(l.amount) || 0;
+      });
+      return { receivable: round2(out), payable: round2(inn), net: round2(out - inn) };
+    },
+
+    /* 總預算：有設定分類預算就加總，否則用每月總預算 */
+    budgetTotal: function () {
+      const bs = Data.budgets();
+      if (bs.length) return bs.reduce(function (s2, b) { return s2 + (Number(b.amount) || 0); }, 0);
+      return Number(DB.settings.monthlyBudget) || 0;
+    },
+
+    /* 執行到期的週期性支出 */
+    runRecurring: function (opts) {
+      const rules = Data.recurring().filter(function (r) { return r.enabled !== false; });
+      if (!rules.length) return 0;
+      const ym = thisMonth();
+      const todayD = new Date().getDate();
+      let created = 0;
+      const cap = 12;
+      rules.forEach(function (r) {
+        let guard = 0;
+        // 由上次執行月份的下一個月開始補
+        let start = r.lastRun || ym;
+        let cur = start;
+        while (guard++ < cap) {
+          const nextYm = shiftMonth(cur, 1);
+          if (nextYm > ym) break;
+          const day = Math.min(Math.max(1, r.day || 1), daysInMonth(nextYm));
+          if (nextYm === ym && todayD < day) break;       // 本月未到日子
+          Data.addTxn({
+            type: 'expense',
+            amount: Number(r.amount) || 0,
+            hkd: Number(r.amount) || 0,
+            date: nextYm + '-' + pad2(day),
+            categoryId: r.categoryId || 'c_other',
+            walletId: r.walletId || 'w_octopus',
+            note: r.name || '週期性支出',
+            tags: ['週期']
+          });
+          created++;
+          cur = nextYm;
+        }
+        r.lastRun = cur;
+        r.updatedAt = nowMs();
+      });
+      if (created) Store.save();
+      return created;
+    },
     group: function (id) { return (DB.groups || []).find(function (g) { return g.id === id && !g.deleted; }); },
 
     /* 新增一筆 */
@@ -408,7 +480,7 @@
   };
 
   /* ---------- 合併（同步用） ---------- */
-  const COLLS = ['wallets', 'categories', 'txns', 'budgets', 'groups'];
+  const COLLS = ['wallets', 'categories', 'txns', 'budgets', 'groups', 'recurring', 'loans', 'goals'];
 
   function mergeDocs(a, b) {
     const out = (a || []).slice();

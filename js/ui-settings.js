@@ -87,6 +87,38 @@
     });
     html += '</div></div>';
 
+    // ---- 週期性支出 ----
+    const recs = Data.recurring();
+    html += '<div class="h-sec">週期性支出</div><div class="card">' +
+      '<div class="row between" style="margin-bottom:10px"><div class="help">每月自動記錄（訂閱、電話費、補習費）。</div>' +
+      '<button class="btn sm" id="addRec">＋ 新增</button></div>';
+    if (!recs.length) {
+      html += '<div class="mini-k">尚未設定。設定一次，之後每月自動記。 </div>';
+    } else {
+      recs.forEach(function (r) {
+        const c = Data.category(r.categoryId);
+        html += '<div class="wrow" data-er="' + r.id + '">' +
+          '<span style="font-size:15px">' + esc(c.icon) + '</span>' +
+          '<span class="grow ellip"><span style="font-size:13.5px">' + esc(r.name || c.name) + '</span>' +
+          '<div class="mini-k">每月 ' + (r.day || 1) + ' 號 · ' + esc(Data.wallet(r.walletId).name) +
+          (r.enabled === false ? ' · 已暫停' : '') + '</div></span>' +
+          '<span class="mono" style="font-size:13px">' + U.fmtMoney(r.amount) + '</span></div>';
+      });
+    }
+    html += '</div>';
+
+    // ---- 備份 ----
+    html += '<div class="h-sec">備份</div><div class="card">' +
+      '<div class="row between" style="margin-bottom:8px"><div><div style="font-size:14px;font-weight:600">自動備份</div>' +
+      '<div class="mini-k">上次：' + esc(Backup.stamp()) + ' · 每週一次，保留 4 份</div></div>' +
+      '<button class="btn sm" id="backupNow">立即備份</button></div>' +
+      '<div class="row between" style="margin-top:6px"><span style="font-size:13px">每週自動備份</span>' +
+      '<button class="btn sm" id="autoBackupBtn">' + (s.autoBackup === false ? '已關閉' : '已開啟') + '</button></div>' +
+      (Backup.nativeOk()
+        ? '<div class="mini-k" style="margin-top:8px">備份檔會存到手機「下載」資料夾，最多保留 4 份（約一個月）。</div>'
+        : '<div class="mini-k" style="margin-top:8px">瀏覽器版本無法自動寫入檔案，請用 APK 或在下方匯出備份。</div>') +
+      '</div>';
+
     html += '<div class="h-sec">匯率換算</div><div class="card">' +
       '<div class="row between" style="margin-bottom:8px"><div class="help">輸入金額，即時看各貨幣等值。</div>' +
       '<button class="btn sm primary" id="refreshRates">更新匯率</button></div>' +
@@ -385,6 +417,58 @@
       });
   }
 
+  /* ---------- 週期性支出編輯 ---------- */
+  function editRecurring(id) {
+    const isNew = !id;
+    const db = Store.get();
+    const r = isNew
+      ? { id: U.uid('rc'), name: '', amount: 0, day: 1, categoryId: 'c_sub', walletId: 'w_octopus', enabled: true }
+      : db.recurring.find(function (x) { return x.id === id; });
+    if (!r) return;
+
+    UI.sheet('<h3>' + (isNew ? '新增週期性支出' : '編輯週期性支出') + '</h3><div class="frm">' +
+      '<div><label class="fl">名稱</label><input type="text" id="rcName" value="' + esc(r.name) + '" placeholder="例如 電話費"></div>' +
+      '<div class="two"><div><label class="fl">金額</label><input type="number" id="rcAmt" step="0.01" value="' + (r.amount || '') + '"></div>' +
+      '<div><label class="fl">每月幾號</label><input type="number" id="rcDay" min="1" max="31" value="' + (r.day || 1) + '"></div></div>' +
+      '<div><label class="fl">分類</label><select id="rcCat">' +
+      Data.categories('expense').map(function (c) {
+        return '<option value="' + c.id + '"' + (c.id === r.categoryId ? ' selected' : '') + '>' + esc(c.icon + ' ' + c.name) + '</option>';
+      }).join('') + '</select></div>' +
+      '<div><label class="fl">錢包</label><select id="rcWal">' +
+      Data.wallets().map(function (w) {
+        return '<option value="' + w.id + '"' + (w.id === r.walletId ? ' selected' : '') + '>' + esc(w.icon + ' ' + w.name) + '</option>';
+      }).join('') + '</select></div>' +
+      '<div class="row"><label style="flex:1;font-size:13.5px"><input type="checkbox" id="rcOn"' +
+      (r.enabled === false ? '' : ' checked') + ' style="width:auto;margin-right:8px">啟用</label></div>' +
+      '</div><div class="sheet-actions">' + (isNew ? '' : '<button class="btn danger" id="rcDel">刪除</button>') +
+      '<button class="btn primary" id="rcSave">儲存</button></div>', function (root) {
+      root.querySelector('#rcSave').onclick = function () {
+        const name = root.querySelector('#rcName').value.trim();
+        const amt = parseFloat(root.querySelector('#rcAmt').value);
+        if (!name) { UI.toast('請輸入名稱'); return; }
+        if (!amt || amt <= 0) { UI.toast('請輸入金額'); return; }
+        const rec = {
+          name: name, amount: U.round2(amt),
+          day: Math.min(31, Math.max(1, parseInt(root.querySelector('#rcDay').value, 10) || 1)),
+          categoryId: root.querySelector('#rcCat').value,
+          walletId: root.querySelector('#rcWal').value,
+          enabled: root.querySelector('#rcOn').checked,
+          updatedAt: U.nowMs()
+        };
+        if (isNew) db.recurring.push(Object.assign({ id: r.id, deleted: false, lastRun: U.thisMonth() }, rec));
+        else Object.assign(r, rec);
+        Store.save(); UI.closeSheet(); UI.render(); UI.toast('已儲存');
+      };
+      const d = root.querySelector('#rcDel');
+      if (d) d.onclick = function () {
+        UI.closeSheet();
+        UI.confirm('刪除這個週期性支出？', '已自動記錄的項目不會被刪除。', function () {
+          r.deleted = true; r.updatedAt = U.nowMs(); Store.save(); UI.render();
+        });
+      };
+    });
+  }
+
   /* ---------- 排序（記賬頁顯示次序） ---------- */
   function openOrder(initialKind) {
     let kind = initialKind || 'expense';
@@ -485,6 +569,22 @@
       UI.toast(r.ok ? '匯率已更新' : ('更新失敗：' + r.msg), 2600);
       UI.render();
     };
+    const ar2 = $('#addRec');
+    if (ar2) ar2.onclick = function () { editRecurring(null); };
+    $$('[data-er]').forEach(function (el) {
+      el.style.cursor = 'pointer';
+      el.onclick = function () { editRecurring(el.dataset.er); };
+    });
+
+    const bn = $('#backupNow'); if (bn) bn.onclick = function () { Backup.run(); };
+    const ab = $('#autoBackupBtn'); if (ab) ab.onclick = function () {
+      const st = Store.get().settings;
+      st.autoBackup = (st.autoBackup === false);
+      Store.get().settingsUpdatedAt = U.nowMs();
+      Store.save(); UI.render();
+      UI.toast(st.autoBackup ? '已開啟每週自動備份' : '已關閉自動備份', 2400);
+    };
+
     const sr = $('#saveRates'); if (sr) sr.onclick = function () {
       const s = Store.get().settings;
       $$('.rateIn').forEach(function (i) { s.rates[i.dataset.r] = parseFloat(i.value) || 1; });

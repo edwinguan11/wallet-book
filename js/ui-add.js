@@ -31,6 +31,22 @@
   }
 
   /* 輸入金額即時換算成其他貨幣 */
+  /* 本月還可以花多少 */
+  function budgetLine() {
+    const total = Data.budgetTotal();
+    if (!total) return '';
+    const ym = U.thisMonth();
+    const sum = Data.summary(Data.txnsOfMonth(ym));
+    const leftAmt = U.round2(total - sum.expense);
+    const today = new Date();
+    const days = U.daysInMonth(ym);
+    const remain = Math.max(1, days - today.getDate() + 1);
+    const perDay = leftAmt > 0 ? U.round2(leftAmt / remain) : 0;
+    const cls = leftAmt < 0 ? 'warn' : '';
+    return '本月剩 <b class="' + cls + '">' + U.fmtMoney(leftAmt) + '</b>　·　每日可花 <b class="' + cls + '">' +
+      U.fmtMoney(perDay) + '</b>';
+  }
+
   function convText() {
     const d = draft();
     const amt = parseFloat(d.amount) || 0;
@@ -133,7 +149,9 @@
       '<span class="val ' + (amountText() === '0' ? 'zero' : '') + '" id="amtVal">' + esc(amountText()) + '</span>' +
       '</div>';
 
-    const conv = '<div class="conv-row" id="convRow">' + convText() + '</div>' +
+    const left = budgetLine();
+    const conv = (left ? '<div class="spend-left">' + left + '</div>' : '') +
+      '<div class="conv-row" id="convRow">' + convText() + '</div>' +
       '<div class="conv-note" id="convLine">' + convNote() + '</div>';
 
     const nl = '<div class="nlbar"><button class="nl-scan" id="scanBtn" title="掃描賬單">📷</button>' +

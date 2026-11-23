@@ -117,6 +117,11 @@
         setTimeout(function () { Sync.sync({ quiet: true }); }, 1200);
       }
       if (global.Rates) Rates.auto();
+      try {
+        const n = Data.runRecurring();
+        if (n > 0) { UI.toast('已自動記錄 ' + n + ' 筆週期性支出', 3000); UI.render(); }
+      } catch (e) {}
+      if (global.Backup) Backup.auto();
       if (!Store.get().settings.onboarded) {
         setTimeout(showWelcome, 700);
       }

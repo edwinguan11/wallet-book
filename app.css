@@ -499,3 +499,10 @@ body, .topbar, .tabbar, .card, .stat, .txn, .chip, .key, input, select, .sheet {
 .cv-line b{font-variant-numeric:tabular-nums;font-size:14px}
 .cv-line.hl{background:color-mix(in srgb, var(--accent) 14%, var(--card2));border:1px solid color-mix(in srgb, var(--accent) 35%, transparent)}
 .cv-line.hl b{color:var(--fg)}
+
+.seg.six{grid-template-columns:repeat(3,1fr)}
+.seg.six button{font-size:12px;padding:7px 0}
+/* 可花多少 */
+.spend-left{text-align:center;font-size:12px;color:var(--muted);margin:-4px 0 10px;line-height:1.5}
+.spend-left b{color:var(--fg);font-size:14px;font-variant-numeric:tabular-nums}
+.spend-left .warn{color:var(--red)}

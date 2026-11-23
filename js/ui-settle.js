@@ -7,15 +7,19 @@
   /* ---------- 主畫面 ---------- */
   UI.screens.settle = function () {
     const tabs = [
-      ['month', '月度結算'], ['budget', '預算'], ['recon', '對賬'], ['split', '朋友分賬']
+      ['month', '月度結算'], ['budget', '預算'], ['recon', '對賬'],
+      ['split', '朋友分賬'], ['loan', '借貸'], ['goal', '儲蓄目標']
     ];
-    let html = '<div class="seg four" style="margin-bottom:14px">' + tabs.map(function (t) {
+    let html = '<div class="seg six" style="margin-bottom:14px">' + tabs.map(function (t) {
       return '<button data-st="' + t[0] + '" class="' + (UI.state.settleTab === t[0] ? 'on' : '') + '">' + t[1] + '</button>';
     }).join('') + '</div>';
 
-    if (UI.state.settleTab === 'month') html += viewMonth();
-    else if (UI.state.settleTab === 'budget') html += viewBudget();
-    else if (UI.state.settleTab === 'recon') html += viewRecon();
+    const tab = UI.state.settleTab;
+    if (tab === 'month') html += viewMonth();
+    else if (tab === 'budget') html += viewBudget();
+    else if (tab === 'recon') html += viewRecon();
+    else if (tab === 'loan') html += viewLoan();
+    else if (tab === 'goal') html += viewGoal();
     else html += viewSplit();
     return html;
   };
@@ -216,6 +220,18 @@
     const ids = Object.keys(byWallet);
     if (!ids.length) return html + UI.emptyBlock('✅', '本月沒有需要對賬的記錄', '所有支出與收入均已記錄');
 
+    // 餘額核對：輸入錢包真實餘額，找出漏記
+    html += '<div class="card"><div class="card-h"><h3>餘額核對</h3><span class="sub">找出漏記</span></div>' +
+      '<div class="help" style="margin-bottom:10px">輸入錢包 App 顯示的真實餘額，系統會比對並找出差額。</div>';
+    Data.wallets().slice(0, 8).forEach(function (w) {
+      const bal = Data.walletBalance(w.id);
+      html += '<div class="wrow"><span style="font-size:15px">' + esc(w.icon) + '</span>' +
+        '<span class="grow ellip" style="font-size:13px">' + esc(w.name) + '</span>' +
+        '<span class="mono mini-k">' + U.fmtMoney(bal) + '</span>' +
+        '<button class="btn sm" data-chkbal="' + w.id + '">核對</button></div>';
+    });
+    html += '</div>';
+
     html += '<div class="card"><div class="card-h"><h3>對賬進度</h3><span class="sub">' + U.monthLabel(ym) + '</span></div>';
     let totalN = 0, doneN = 0;
     ids.forEach(function (id) {
@@ -332,6 +348,155 @@
       if (creditors[j].v <= 0.5) j++;
     }
     return out;
+  }
+
+  /* ================= 借貸 ================= */
+  function viewLoan() {
+    const st = Data.loanStats();
+    const list = Data.loans();
+    let html = '<div class="stats3" style="margin-bottom:12px">' +
+      UI.statCard('別人欠我', U.fmtMoney(st.receivable), 'pos') +
+      UI.statCard('我欠別人', U.fmtMoney(st.payable), 'neg') +
+      UI.statCard('淨額', U.fmtMoney(st.net), st.net < 0 ? 'neg' : 'pos') + '</div>';
+
+    html += '<button class="btn primary block" id="addLoan" style="margin-bottom:12px">＋ 新增借貸記錄</button>';
+
+    if (!list.length) {
+      return html + UI.emptyBlock('🤝', '尚未有借貸記錄', '借錢給同學、或向朋友借錢，都可以在這裡記錄，自動計算誰欠誰');
+    }
+
+    html += '<div class="card"><div class="card-h"><h3>記錄</h3><span class="sub">' +
+      list.filter(function (l) { return !l.settled; }).length + ' 筆未結清</span></div>';
+    list.forEach(function (l) {
+      const out = l.direction !== 'in';
+      html += '<div class="wrow" data-loan="' + l.id + '">' +
+        '<span style="font-size:15px">' + (out ? '📤' : '📥') + '</span>' +
+        '<span class="grow ellip"><span style="font-size:13.5px">' + esc(l.person) + '</span>' +
+        '<div class="mini-k">' + esc(l.date) + (l.note ? ' · ' + esc(l.note) : '') + '</div></span>' +
+        '<span class="mono" style="font-size:13px;color:' + (out ? 'var(--green)' : 'var(--red)') + '">' +
+        (out ? '+' : '−') + U.fmtMoney(l.amount) + '</span>' +
+        '<button class="btn sm ' + (l.settled ? 'ghost' : '') + '" data-setloan="' + l.id + '">' +
+        (l.settled ? '已清' : '結清') + '</button></div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function editLoan(id) {
+    const isNew = !id;
+    const db = Store.get();
+    const l = isNew
+      ? { id: U.uid('ln'), person: '', amount: 0, direction: 'out', date: U.today(), note: '', settled: false }
+      : db.loans.find(function (x) { return x.id === id; });
+    if (!l) return;
+
+    UI.sheet('<h3>' + (isNew ? '新增借貸' : '編輯借貸') + '</h3><div class="frm">' +
+      '<div><label class="fl">對象</label><input type="text" id="lnPerson" value="' + esc(l.person) + '" placeholder="例如 小明"></div>' +
+      '<div class="two"><div><label class="fl">金額</label><input type="number" id="lnAmt" step="0.01" value="' + (l.amount || '') + '"></div>' +
+      '<div><label class="fl">日期</label><input type="date" id="lnDate" value="' + esc(l.date) + '"></div></div>' +
+      '<div><label class="fl">方向</label><select id="lnDir">' +
+      '<option value="out"' + (l.direction !== 'in' ? ' selected' : '') + '>我借出（對方欠我）</option>' +
+      '<option value="in"' + (l.direction === 'in' ? ' selected' : '') + '>我借入（我欠對方）</option>' +
+      '</select></div>' +
+      '<div><label class="fl">備註</label><input type="text" id="lnNote" value="' + esc(l.note || '') + '"></div>' +
+      '</div><div class="sheet-actions">' + (isNew ? '' : '<button class="btn danger" id="lnDel">刪除</button>') +
+      '<button class="btn primary" id="lnSave">儲存</button></div>', function (root) {
+      root.querySelector('#lnSave').onclick = function () {
+        const person = root.querySelector('#lnPerson').value.trim();
+        const amt = parseFloat(root.querySelector('#lnAmt').value);
+        if (!person) { UI.toast('請輸入對象'); return; }
+        if (!amt || amt <= 0) { UI.toast('請輸入金額'); return; }
+        const rec = {
+          person: person, amount: U.round2(amt),
+          direction: root.querySelector('#lnDir').value,
+          date: root.querySelector('#lnDate').value || U.today(),
+          note: root.querySelector('#lnNote').value.trim(),
+          updatedAt: U.nowMs()
+        };
+        if (isNew) {
+          db.loans.push(Object.assign({ id: l.id, settled: false, deleted: false }, rec));
+        } else Object.assign(l, rec);
+        Store.save(); UI.closeSheet(); UI.render(); UI.toast('已儲存');
+      };
+      const d = root.querySelector('#lnDel');
+      if (d) d.onclick = function () {
+        UI.closeSheet();
+        UI.confirm('刪除這筆借貸？', '', function () {
+          l.deleted = true; l.updatedAt = U.nowMs(); Store.save(); UI.render();
+        });
+      };
+    });
+  }
+
+  /* ================= 儲蓄目標 ================= */
+  function viewGoal() {
+    const goals = Data.goals();
+    let html = '<button class="btn primary block" id="addGoal" style="margin-bottom:12px">＋ 新增儲蓄目標</button>';
+    if (!goals.length) {
+      return html + UI.emptyBlock('🎯', '還沒有儲蓄目標', '例如「買相機 $3000」，設定後可以看到進度與還差多少');
+    }
+    goals.forEach(function (g) {
+      const pct = g.target > 0 ? Math.min(100, (g.saved / g.target) * 100) : 0;
+      const left = Math.max(0, g.target - g.saved);
+      html += '<div class="card"><div class="row between" style="margin-bottom:8px">' +
+        '<div><div style="font-size:15px;font-weight:700">' + esc(g.name) + '</div>' +
+        '<div class="mini-k">已存 ' + U.fmtMoney(g.saved) + ' / ' + U.fmtMoney(g.target) + '</div></div>' +
+        '<div style="text-align:right"><div style="font-size:17px;font-weight:800">' + pct.toFixed(0) + '%</div>' +
+        '<div class="mini-k">' + (left > 0 ? '還差 ' + U.fmtMoney(left) : '已達成 🎉') + '</div></div></div>' +
+        '<div class="prog" style="height:11px"><i class="' + (pct >= 100 ? '' : 'warn') + '" style="width:' + pct.toFixed(1) + '%"></i></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">' +
+        '<button class="btn sm" data-goaladd="' + g.id + '">存入</button>' +
+        '<button class="btn sm ghost" data-goaledit="' + g.id + '">編輯</button></div></div>';
+    });
+    return html;
+  }
+
+  function editGoal(id) {
+    const isNew = !id;
+    const db = Store.get();
+    const g = isNew ? { id: U.uid('gl'), name: '', target: 0, saved: 0 } : db.goals.find(function (x) { return x.id === id; });
+    if (!g) return;
+    UI.sheet('<h3>' + (isNew ? '新增儲蓄目標' : '編輯目標') + '</h3><div class="frm">' +
+      '<div><label class="fl">目標名稱</label><input type="text" id="glName" value="' + esc(g.name) + '" placeholder="例如 買相機"></div>' +
+      '<div class="two"><div><label class="fl">目標金額</label><input type="number" id="glTarget" step="1" value="' + (g.target || '') + '"></div>' +
+      '<div><label class="fl">已存金額</label><input type="number" id="glSaved" step="1" value="' + (g.saved || 0) + '"></div></div>' +
+      '</div><div class="sheet-actions">' + (isNew ? '' : '<button class="btn danger" id="glDel">刪除</button>') +
+      '<button class="btn primary" id="glSave">儲存</button></div>', function (root) {
+      root.querySelector('#glSave').onclick = function () {
+        const name = root.querySelector('#glName').value.trim();
+        const target = parseFloat(root.querySelector('#glTarget').value);
+        const saved = parseFloat(root.querySelector('#glSaved').value) || 0;
+        if (!name || !target) { UI.toast('請填寫名稱與目標金額'); return; }
+        const rec = { name: name, target: U.round2(target), saved: U.round2(saved), updatedAt: U.nowMs() };
+        if (isNew) db.goals.push(Object.assign({ id: g.id, deleted: false }, rec));
+        else Object.assign(g, rec);
+        Store.save(); UI.closeSheet(); UI.render(); UI.toast('已儲存');
+      };
+      const d = root.querySelector('#glDel');
+      if (d) d.onclick = function () {
+        UI.closeSheet();
+        UI.confirm('刪除這個目標？', '', function () {
+          g.deleted = true; g.updatedAt = U.nowMs(); Store.save(); UI.render();
+        });
+      };
+    });
+  }
+
+  function depositGoal(id) {
+    const g = Store.get().goals.find(function (x) { return x.id === id; });
+    if (!g) return;
+    UI.prompt({ title: '存入「' + g.name + '」', label: '金額（會同時記一筆儲蓄支出）', placeholder: '例如 500', ok: '存入' }).then(function (v) {
+      const amt = parseFloat(v);
+      if (!amt || amt <= 0) return;
+      g.saved = U.round2((Number(g.saved) || 0) + amt);
+      g.updatedAt = U.nowMs();
+      Data.addTxn({
+        type: 'expense', amount: amt, hkd: amt, date: U.today(),
+        categoryId: 'c_save', walletId: Store.get().settings.defaultWallet || 'w_octopus',
+        note: '儲蓄：' + g.name
+      });
+      Store.save(); UI.render(); UI.toast('已存入 ' + U.fmtMoney(amt));
+    });
   }
 
   /* ---------- 群組詳情 ---------- */
@@ -519,6 +684,63 @@
     });
     const ng = $('#newGroup');
     if (ng) ng.onclick = newGroup;
+
+    // 借貸
+    const al = $('#addLoan'); if (al) al.onclick = function () { editLoan(null); };
+    $$('[data-loan]').forEach(function (el) {
+      el.onclick = function (e) {
+        if (e.target.hasAttribute('data-setloan')) return;
+        editLoan(el.dataset.loan);
+      };
+    });
+    $$('[data-setloan]').forEach(function (b) {
+      b.onclick = function (e) {
+        e.stopPropagation();
+        const l = Store.get().loans.find(function (x) { return x.id === b.dataset.setloan; });
+        if (!l) return;
+        l.settled = !l.settled;
+        l.settledDate = l.settled ? U.today() : '';
+        l.updatedAt = U.nowMs();
+        Store.save(); UI.render();
+      };
+    });
+
+    // 儲蓄目標
+    const ag = $('#addGoal'); if (ag) ag.onclick = function () { editGoal(null); };
+    $$('[data-goaladd]').forEach(function (b) { b.onclick = function () { depositGoal(b.dataset.goaladd); }; });
+    $$('[data-goaledit]').forEach(function (b) { b.onclick = function () { editGoal(b.dataset.goaledit); }; });
+
+    // 餘額核對
+    $$('[data-chkbal]').forEach(function (b) {
+      b.onclick = function () {
+        const wid = b.dataset.chkbal;
+        const w = Data.wallet(wid);
+        const calc = Data.walletBalance(wid);
+        UI.prompt({
+          title: w.name + ' 餘額核對',
+          label: '輸入 App／卡上顯示的真實餘額（目前推算 HK$' + calc.toFixed(2) + '）',
+          placeholder: '例如 123.4', ok: '核對'
+        }).then(function (v) {
+          if (v === null || v === '') return;
+          const real = parseFloat(v);
+          if (isNaN(real)) return;
+          const diff = U.round2(real - calc);
+          if (Math.abs(diff) < 0.01) { UI.toast('完全一致，沒有漏記'); return; }
+          UI.confirm('差額 ' + U.fmtMoney(Math.abs(diff)),
+            diff > 0 ? '實際餘額比記錄多，可能漏記了收入或支出記多了。要建立一筆校正記錄嗎？'
+                     : '實際餘額比記錄少，可能漏記了支出。要建立一筆校正記錄嗎？',
+            function () {
+              Data.addTxn({
+                type: diff > 0 ? 'income' : 'expense',
+                amount: Math.abs(diff), hkd: Math.abs(diff), date: U.today(),
+                categoryId: diff > 0 ? 'i_other' : 'c_other',
+                walletId: wid, note: '餘額校正'
+              });
+              UI.render(); UI.toast('已建立校正記錄');
+            }, '建立校正');
+        });
+      };
+    });
   };
 
   global.__openGroup = openGroup;
