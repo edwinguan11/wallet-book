@@ -168,6 +168,7 @@
         baseCurrency: 'HKD',
         rates: Object.assign({}, RATES),
         ratesUpdatedAt: 0,
+        ratesAuto: true,
         pin: '',
         defaultWallet: 'w_octopus',
         lastMonth: thisMonth(),

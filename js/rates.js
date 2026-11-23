@@ -21,6 +21,7 @@
     const s = cfg();
     if (busy) return { ok: false, msg: '更新中' };
     if (!navigator.onLine) return { ok: false, msg: '目前離線' };
+    if (s.ratesAuto === false && !opts.force) return { ok: true, msg: '手動模式', cached: true };
     if (!opts.force && s.ratesUpdatedAt && (Date.now() - s.ratesUpdatedAt) < MAX_AGE) {
       return { ok: true, msg: '仍是最新', cached: true };
     }
@@ -52,7 +53,10 @@
 
   global.Rates = {
     update: update,
-    auto: function () { setTimeout(function () { update({}); }, 1500); },
+    auto: function () {
+      if (cfg().ratesAuto === false) return;      // 使用者已改為手動
+      setTimeout(function () { update({}); }, 1500);
+    },
     label: function () { return fmtTime(cfg().ratesUpdatedAt); },
     get lastErr() { return lastErr; }
   };

@@ -87,11 +87,23 @@
     });
     html += '</div></div>';
 
-    html += '<div class="h-sec">外幣匯率（兌港幣）</div><div class="card">' +
-      '<div class="row between" style="margin-bottom:10px"><div class="help">記錄外幣消費時按此換算為港幣。</div>' +
+    html += '<div class="h-sec">匯率換算</div><div class="card">' +
+      '<div class="row between" style="margin-bottom:8px"><div class="help">輸入金額，即時看各貨幣等值。</div>' +
       '<button class="btn sm primary" id="refreshRates">更新匯率</button></div>' +
-      '<div class="mini-k" style="margin-bottom:10px">連網時自動更新（每 6 小時一次）· 上次更新：' +
-      esc(Rates ? Rates.label() : '—') + '</div><div class="frm">';
+      '<div class="conv-box">' +
+      '<div class="row" style="gap:8px">' +
+      '<input type="number" id="cvAmt" inputmode="decimal" value="100" style="flex:1">' +
+      '<select id="cvCur" style="width:104px">' +
+      ['HKD', 'CNY', 'JPY', 'TWD', 'KRW', 'THB', 'USD', 'GBP', 'EUR', 'SGD', 'MYR'].map(function (cc) {
+        return '<option value="' + cc + '"' + (cc === 'CNY' ? ' selected' : '') + '>' + cc + '</option>';
+      }).join('') + '</select></div>' +
+      '<div id="cvOut" class="conv-out"></div></div>' +
+      '<div class="row between" style="margin:14px 0 8px"><span style="font-size:13px">自動更新匯率</span>' +
+      '<button class="btn sm" id="autoRateBtn">' + ((s.ratesAuto === false) ? '已關閉' : '已開啟') + '</button></div>' +
+      '<div class="mini-k" style="margin-bottom:10px">' +
+      ((s.ratesAuto === false) ? '手動模式：你設定的匯率不會被覆蓋' : '連網時每 6 小時自動更新一次') +
+      ' · 上次更新：' + esc(Rates ? Rates.label() : '—') + '</div>' +
+      '<div class="h-sec" style="margin:6px 0 8px">手動調整匯率（兌港幣）</div><div class="frm">';
     Object.keys(s.rates).forEach(function (k) {
       html += '<div class="row"><span style="width:60px;font-size:13px">' + k + '</span>' +
         '<input type="number" step="0.0001" class="rateIn" data-r="' + k + '" value="' + s.rates[k] + '" style="flex:1;padding:7px 10px"></div>';
@@ -476,9 +488,50 @@
     const sr = $('#saveRates'); if (sr) sr.onclick = function () {
       const s = Store.get().settings;
       $$('.rateIn').forEach(function (i) { s.rates[i.dataset.r] = parseFloat(i.value) || 1; });
+      s.ratesAuto = false;                       // 手動設定後不再自動覆蓋
+      s.ratesUpdatedAt = U.nowMs();
       Store.get().settingsUpdatedAt = U.nowMs();
-      Store.save(); UI.toast('匯率已儲存');
+      Store.save();
+      UI.render();
+      UI.toast('匯率已儲存，並關閉自動更新', 2600);
     };
+
+    const ar = $('#autoRateBtn'); if (ar) ar.onclick = function () {
+      const s = Store.get().settings;
+      s.ratesAuto = (s.ratesAuto === false);
+      Store.get().settingsUpdatedAt = U.nowMs();
+      Store.save();
+      UI.render();
+      UI.toast(s.ratesAuto ? '已開啟自動更新匯率' : '已關閉自動更新，改為手動', 2400);
+    };
+
+    // 匯率試算器
+    function calcConv() {
+      const amtIn = document.querySelector('#cvAmt');
+      const curIn = document.querySelector('#cvCur');
+      const out = document.querySelector('#cvOut');
+      if (!amtIn || !out) return;
+      const amt = parseFloat(amtIn.value) || 0;
+      const cur = curIn.value;
+      const rates = Store.get().settings.rates || {};
+      const toHkd = cur === 'HKD' ? 1 : (Number(rates[cur]) || 1);
+      const hkd = amt * toHkd;
+      let h = '';
+      ['HKD', 'CNY', 'JPY', 'TWD', 'USD', 'EUR', 'GBP'].forEach(function (t) {
+        if (t === cur) return;
+        const r = Number(rates[t]) || 1;
+        const v = hkd / r;
+        const txt = (t === 'JPY' || t === 'KRW') ? Math.round(v).toLocaleString('en-US')
+          : (v >= 10000 ? Math.round(v).toLocaleString('en-US') : v.toFixed(2));
+        h += '<div class="cv-line' + (t === 'HKD' ? ' hl' : '') + '"><span>' +
+          ({ HKD: '港幣 HK$', CNY: '人民幣 ¥', JPY: '日圓 ¥', TWD: '台幣 NT$', USD: '美元 US$', EUR: '歐元 €', GBP: '英鎊 £' }[t]) +
+          '</span><b>' + txt + '</b></div>';
+      });
+      out.innerHTML = h;
+    }
+    const cvA = document.querySelector('#cvAmt');
+    const cvC = document.querySelector('#cvCur');
+    if (cvA) { cvA.oninput = calcConv; cvC.onchange = calcConv; calcConv(); }
     const ej = $('#expJson'); if (ej) ej.onclick = function () {
       download('記賬本備份-' + U.today() + '.json', Store.exportJSON());
       UI.toast('已匯出備份');

@@ -490,3 +490,12 @@ body, .topbar, .tabbar, .card, .stat, .txn, .chip, .key, input, select, .sheet {
 .ord-btn{width:34px;height:34px;border-radius:9px;background:var(--card2);border:1px solid var(--line);color:var(--fg);font-size:12px}
 .ord-btn:disabled{opacity:.28}
 .ord-btn:active{transform:scale(.93)}
+
+/* 匯率試算器 */
+.conv-box{margin:10px 0 4px}
+.conv-out{margin-top:10px;display:flex;flex-direction:column;gap:2px}
+.cv-line{display:flex;justify-content:space-between;align-items:baseline;padding:7px 10px;border-radius:9px;background:var(--card2);font-size:13px}
+.cv-line span{color:var(--muted);font-size:12px}
+.cv-line b{font-variant-numeric:tabular-nums;font-size:14px}
+.cv-line.hl{background:color-mix(in srgb, var(--accent) 14%, var(--card2));border:1px solid color-mix(in srgb, var(--accent) 35%, transparent)}
+.cv-line.hl b{color:var(--fg)}
