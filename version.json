@@ -1,6 +1,6 @@
 {
-  "versionCode": 9,
-  "versionName": "1.0.8",
-  "apk": "https://edwinguan11.github.io/wallet-book/wallet-book-1.0.8.apk",
-  "notes": "1.0.8：\n· 新增「加到桌面」：一鍵把快速記賬按鈕釘在桌面（不用找小工具）\n· 小工具宣告補齊 preview / 尺寸設定"
+  "versionCode": 10,
+  "versionName": "1.0.9",
+  "apk": "https://edwinguan11.github.io/wallet-book/wallet-book-1.0.9.apk",
+  "notes": "1.0.9：小工具全新設計\n· 四色磁貼，一眼分得出按鈕\n· 金額放大、加入分類圖示\n· 點擊範圍加大到整個磁貼"
 }

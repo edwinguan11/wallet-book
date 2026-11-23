@@ -443,14 +443,18 @@
 
   /* ---------- 桌面小工具按鈕 ---------- */
   const DEFAULT_WIDGET = [
-    { l: '巴士', a: 6, c: 'c_bus', w: 'w_octopus' },
-    { l: '小巴', a: 4.1, c: 'c_minibus', w: 'w_octopus' },
-    { l: '午餐', a: 45, c: 'c_lunch', w: 'w_alipayhk' }
+    { l: '巴士', a: 6, c: 'c_bus', w: 'w_octopus', i: '🚌' },
+    { l: '小巴', a: 4.1, c: 'c_minibus', w: 'w_octopus', i: '🚐' },
+    { l: '午餐', a: 45, c: 'c_lunch', w: 'w_alipayhk', i: '🍱' }
   ];
 
   function widgetPresets() {
     const st = Store.get().settings;
     if (!Array.isArray(st.widgetPresets)) st.widgetPresets = DEFAULT_WIDGET.slice();
+    // 補上圖示（舊資料沒有）
+    st.widgetPresets.forEach(function (wp) {
+      if (!wp.i) wp.i = Data.category(wp.c).icon || '';
+    });
     return st.widgetPresets;
   }
 
@@ -486,7 +490,8 @@
         const a = parseFloat(root.querySelector('#wpA').value);
         if (!l) { UI.toast('請輸入名稱'); return; }
         if (!a || a <= 0) { UI.toast('請輸入金額'); return; }
-        const rec = { l: l, a: U.round2(a), c: root.querySelector('#wpC').value, w: root.querySelector('#wpW').value };
+        const cid = root.querySelector('#wpC').value;
+        const rec = { l: l, a: U.round2(a), c: cid, w: root.querySelector('#wpW').value, i: Data.category(cid).icon };
         const arr = widgetPresets();
         if (isNew) { if (arr.length >= 4) { UI.toast('最多 4 個按鈕'); return; } arr.push(rec); }
         else arr[idx] = rec;
