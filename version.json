@@ -1,6 +1,6 @@
 {
-  "versionCode": 8,
-  "versionName": "1.0.7",
-  "apk": "https://edwinguan11.github.io/wallet-book/wallet-book-1.0.7.apk",
-  "notes": "1.0.7：\n· 改名為「荷包記」\n· 新增長按 App 圖示的快速記賬捷徑\n· 桌面小工具修正顯示名稱"
+  "versionCode": 9,
+  "versionName": "1.0.8",
+  "apk": "https://edwinguan11.github.io/wallet-book/wallet-book-1.0.8.apk",
+  "notes": "1.0.8：\n· 新增「加到桌面」：一鍵把快速記賬按鈕釘在桌面（不用找小工具）\n· 小工具宣告補齊 preview / 尺寸設定"
 }

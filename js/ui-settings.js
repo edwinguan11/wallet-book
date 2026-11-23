@@ -97,15 +97,19 @@
     } else {
       wps.forEach(function (wp, i) {
         const c = Data.category(wp.c);
-        html += '<div class="wrow" data-ewp="' + i + '">' +
+        html += '<div class="wrow">' +
           '<span style="font-size:15px">' + esc(c.icon) + '</span>' +
-          '<span class="grow ellip"><span style="font-size:13.5px">' + esc(wp.l) + '</span>' +
+          '<span class="grow ellip" data-ewp="' + i + '"><span style="font-size:13.5px">' + esc(wp.l) + '</span>' +
           '<div class="mini-k">' + esc(c.name) + ' · ' + esc(Data.wallet(wp.w).name) + '</div></span>' +
-          '<span class="mono" style="font-size:13px;color:var(--accent)">$' + (Math.round(wp.a * 100) / 100) + '</span></div>';
+          '<span class="mono" style="font-size:13px;color:var(--accent)">$' + (Math.round(wp.a * 100) / 100) + '</span>' +
+          '<button class="btn sm" data-pin="' + i + '">加到桌面</button></div>';
       });
     }
-    html += '<div class="mini-k" style="margin-top:10px">加入方法：長按桌面空白處 → 小工具 → 找「記賬本」→ 拖到桌面。' +
-      (window.AndroidBridge && AndroidBridge.setWidgetPresets ? '' : '<br>（網頁版不支援小工具，請用 APK）') + '</div></div>';
+    html += '<div class="mini-k" style="margin-top:10px">' +
+      '① 按「加到桌面」→ 桌面會多一個按鈕，一點即記（最直接）<br>' +
+      '② 長按「荷包記」圖示 → 選按鈕<br>' +
+      '③ 長按桌面空白 → 小工具 → 找「荷包記 快速記賬」' +
+      (window.AndroidBridge && AndroidBridge.setWidgetPresets ? '' : '<br><br>（網頁版不支援上述功能，請用 APK）') + '</div></div>';
 
     // ---- 週期性支出 ----
     const recs = Data.recurring();
@@ -654,6 +658,17 @@
       UI.toast(r.ok ? '匯率已更新' : ('更新失敗：' + r.msg), 2600);
       UI.render();
     };
+    $$('[data-pin]').forEach(function (b) {
+      b.onclick = function () {
+        const i = parseInt(b.dataset.pin, 10);
+        if (!(window.AndroidBridge && AndroidBridge.pinShortcut)) { UI.toast('請在 App 內使用此功能'); return; }
+        try {
+          AndroidBridge.setWidgetPresets(JSON.stringify(widgetPresets()));
+          AndroidBridge.pinShortcut(i);
+        } catch (e) { UI.toast('無法加到桌面'); }
+      };
+    });
+
     const adw = $('#addWidget');
     if (adw) adw.onclick = function () { editWidgetPreset(-1); };
     $$('[data-ewp]').forEach(function (el) {
