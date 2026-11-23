@@ -218,7 +218,6 @@
     all.forEach(function (t) { (byWallet[t.walletId] = byWallet[t.walletId] || []).push(t); });
 
     const ids = Object.keys(byWallet);
-    if (!ids.length) return html + UI.emptyBlock('✅', '本月沒有需要對賬的記錄', '所有支出與收入均已記錄');
 
     // 餘額核對：輸入錢包真實餘額，找出漏記
     html += '<div class="card"><div class="card-h"><h3>餘額核對</h3><span class="sub">找出漏記</span></div>' +
@@ -228,9 +227,14 @@
       html += '<div class="wrow"><span style="font-size:15px">' + esc(w.icon) + '</span>' +
         '<span class="grow ellip" style="font-size:13px">' + esc(w.name) + '</span>' +
         '<span class="mono mini-k">' + U.fmtMoney(bal) + '</span>' +
+        '<button class="btn sm" data-wdetail="' + w.id + '">明細</button>' +
         '<button class="btn sm" data-chkbal="' + w.id + '">核對</button></div>';
     });
     html += '</div>';
+
+    if (!ids.length) {
+      return html + UI.emptyBlock('✅', '本月沒有需要對賬的記錄', '所有支出與收入均已記錄');
+    }
 
     html += '<div class="card"><div class="card-h"><h3>對賬進度</h3><span class="sub">' + U.monthLabel(ym) + '</span></div>';
     let totalN = 0, doneN = 0;
@@ -348,6 +352,103 @@
       if (creditors[j].v <= 0.5) j++;
     }
     return out;
+  }
+
+  /* ================= 錢包餘額明細 ================= */
+  function openWalletDetail(wid) {
+    const w = Data.wallet(wid);
+    const all = Data.txns();
+    let income = 0, expense = 0, tin = 0, tout = 0, ni = 0, ne = 0, nt = 0;
+    const rows = [];
+    all.forEach(function (t) {
+      let delta = 0;
+      if (t.type === 'income' && t.walletId === wid) { delta = t.hkd; income += t.hkd; ni++; }
+      else if (t.type === 'expense' && t.walletId === wid) { delta = -t.hkd; expense += t.hkd; ne++; }
+      else if (t.type === 'transfer') {
+        if (t.walletId === wid) { delta -= t.hkd; tout += t.hkd; nt++; }
+        if (t.toWalletId === wid) { delta += t.hkd; tin += t.hkd; nt++; }
+      }
+      if (delta !== 0) rows.push({ t: t, delta: delta });
+    });
+    const opening = Number(w.opening) || 0;
+    const calc = U.round2(opening + income - expense + tin - tout);
+
+    let h = '<h3>' + esc(w.icon) + ' ' + esc(w.name) + ' 餘額明細</h3>' +
+      '<div class="frm" style="gap:6px">' +
+      '<div class="row between"><span>期初餘額</span><b class="mono">' + U.fmtMoney(opening) + '</b></div>' +
+      '<div class="row between"><span>收入（' + ni + ' 筆）</span><b class="mono pos">+' + U.fmtMoney(income) + '</b></div>' +
+      '<div class="row between"><span>支出（' + ne + ' 筆）</span><b class="mono neg">−' + U.fmtMoney(expense) + '</b></div>' +
+      '<div class="row between"><span>轉入</span><b class="mono pos">+' + U.fmtMoney(tin) + '</b></div>' +
+      '<div class="row between"><span>轉出</span><b class="mono neg">−' + U.fmtMoney(tout) + '</b></div>' +
+      '<div class="divider"></div>' +
+      '<div class="row between"><span style="font-weight:700">現時餘額</span><b class="mono" style="font-size:17px">' + U.fmtMoney(calc) + '</b></div>' +
+      '</div>';
+
+    rows.sort(function (a, b) { return a.t.date < b.t.date ? 1 : -1; });
+    h += '<div class="h-sec">最近 12 筆</div><table class="tbl"><tbody>';
+    rows.slice(0, 12).forEach(function (r) {
+      const t = r.t;
+      const label = t.note || (t.type === 'transfer' ? '轉賬' : Data.category(t.categoryId).name);
+      h += '<tr><td class="muted" style="width:52px">' + esc(t.date.slice(5)) + '</td>' +
+        '<td class="ellip" style="max-width:120px">' + esc(label) + '</td>' +
+        '<td class="' + (r.delta > 0 ? 'pos' : 'neg') + '">' + (r.delta > 0 ? '+' : '−') + U.fmtMoney(Math.abs(r.delta)) + '</td></tr>';
+    });
+    h += '</tbody></table>';
+
+    h += '<div class="sheet-actions"><button class="btn" id="wdDup">找出可疑重複</button>' +
+      '<button class="btn primary" id="wdClose">關閉</button></div>';
+
+    UI.sheet(h, function (root) {
+      root.querySelector('#wdClose').onclick = UI.closeSheet;
+      root.querySelector('#wdDup').onclick = function () { UI.closeSheet(); findDuplicates(wid); };
+    });
+  }
+
+  /* 找出同一錢包、同日期、同金額的重複記錄 */
+  function findDuplicates(wid) {
+    const map = {};
+    Data.txns().forEach(function (t) {
+      if (t.type === 'transfer') return;
+      if (wid && t.walletId !== wid) return;
+      const k = t.date + '|' + t.hkd.toFixed(2) + '|' + t.type;
+      (map[k] = map[k] || []).push(t);
+    });
+    const dups = Object.keys(map).map(function (k) { return map[k]; })
+      .filter(function (arr) { return arr.length > 1; })
+      .sort(function (a, b) { return b[0].hkd - a[0].hkd; });
+
+    if (!dups.length) {
+      UI.sheet('<h3>沒有發現重複</h3><div class="help">同一天、同一金額、同一錢包的記錄沒有重複。</div>' +
+        '<div class="sheet-actions"><button class="btn primary" id="dClose">明白</button></div>',
+        function (root) { root.querySelector('#dClose').onclick = UI.closeSheet; });
+      return;
+    }
+
+    let h = '<h3>可疑重複（' + dups.length + ' 組）</h3>' +
+      '<div class="help" style="margin-bottom:10px">同一天、同一金額、同一類型出現多次。可能係重複匯入或重複記賬。</div>';
+    dups.slice(0, 12).forEach(function (arr, gi) {
+      const t = arr[0];
+      h += '<div class="card tight" style="margin-bottom:8px">' +
+        '<div class="row between" style="margin-bottom:6px"><b>' + esc(t.date) + ' · ' + U.fmtMoney(t.hkd) + ' × ' + arr.length + '</b>' +
+        '<span class="mini-k">' + esc(Data.wallet(t.walletId).name) + '</span></div>';
+      arr.forEach(function (x, i) {
+        h += '<div class="row between" style="font-size:12.5px;padding:3px 0">' +
+          '<span class="ellip muted">' + esc(x.note || Data.category(x.categoryId).name) + '</span>' +
+          '<button class="btn sm ghost" data-rm="' + x.id + '">刪除</button></div>';
+      });
+      h += '</div>';
+    });
+    h += '<div class="sheet-actions"><button class="btn primary" id="dClose">關閉</button></div>';
+    UI.sheet(h, function (root) {
+      root.querySelector('#dClose').onclick = function () { UI.closeSheet(); UI.render(); };
+      root.querySelectorAll('[data-rm]').forEach(function (b) {
+        b.onclick = function () {
+          Data.removeTxn(b.dataset.rm);
+          UI.closeSheet(); UI.render();
+          UI.toast('已刪除一筆');
+        };
+      });
+    });
   }
 
   /* ================= 借貸 ================= */
@@ -709,6 +810,10 @@
     const ag = $('#addGoal'); if (ag) ag.onclick = function () { editGoal(null); };
     $$('[data-goaladd]').forEach(function (b) { b.onclick = function () { depositGoal(b.dataset.goaladd); }; });
     $$('[data-goaledit]').forEach(function (b) { b.onclick = function () { editGoal(b.dataset.goaledit); }; });
+
+    $$('[data-wdetail]').forEach(function (b) {
+      b.onclick = function () { openWalletDetail(b.dataset.wdetail); };
+    });
 
     // 餘額核對
     $$('[data-chkbal]').forEach(function (b) {
