@@ -179,7 +179,7 @@
   }
 
   function showWelcome() {
-    const html = '<h3>歡迎使用記賬本</h3>' +
+    const html = '<h3>歡迎使用荷包記</h3>' +
       '<div class="help">' +
       '<b>三個步驟開始記賬：</b><br>' +
       '1. 輸入金額<br>' +

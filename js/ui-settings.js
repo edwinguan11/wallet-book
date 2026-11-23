@@ -182,7 +182,7 @@
       '<div class="row between" style="margin-bottom:10px"><span style="font-size:14px;font-weight:600">Android App</span>' +
       '<a class="btn sm primary" href="wallet-book.apk" download>下載 APK</a></div>' +
       '<div class="help" style="margin-bottom:12px">安裝後可離線使用，資料存在手機內。App 會自動載入最新網頁版，功能更新不需要重新安裝。</div>' +
-      '<div class="help"><b>記賬本</b> v1.0.0 · 香港支付方式全覆蓋<br>' +
+      '<div class="help"><b>荷包記</b> · 香港支付方式全覆蓋<br>' +
       '所有資料預設儲存在此裝置的瀏覽器內，不會上傳到任何伺服器（同步功能只會寫入你自己的私有 Gist）。<br><br>' +
       '小提示：在手機瀏覽器選單中選擇「加到主畫面」，即可像 App 一樣使用。</div></div>';
 
@@ -725,7 +725,7 @@
     const cvC = document.querySelector('#cvCur');
     if (cvA) { cvA.oninput = calcConv; cvC.onchange = calcConv; calcConv(); }
     const ej = $('#expJson'); if (ej) ej.onclick = function () {
-      download('記賬本備份-' + U.today() + '.json', Store.exportJSON());
+      download('荷包記備份-' + U.today() + '.json', Store.exportJSON());
       UI.toast('已匯出備份');
     };
     const ec = $('#expCsv'); if (ec) ec.onclick = function () {

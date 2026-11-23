@@ -10,7 +10,7 @@
   }
 
   function fileName() {
-    return '記賬本備份-' + U.today() + '.json';
+    return '荷包記備份-' + U.today() + '.json';
   }
 
   function stamp() {
