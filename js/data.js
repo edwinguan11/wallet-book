@@ -249,10 +249,6 @@
     out.settings = Object.assign({}, base.settings, d.settings || {});
     out.settings.rates = Object.assign({}, base.settings.rates, (d.settings || {}).rates || {});
     out.settings.sync = Object.assign({}, base.settings.sync, (d.settings || {}).sync || {});
-    // 排序欄位（舊資料補上，按現有次序）
-    out.wallets.forEach(function (w, i) { if (typeof w.sort !== 'number') w.sort = i; });
-    out.categories.forEach(function (c, i) { if (typeof c.sort !== 'number') c.sort = i; });
-
     // v2：補回新增的支付方式（只執行一次）
     if (!out.settings.seededV2) {
       const have = {};
@@ -266,6 +262,11 @@
       });
       out.settings.seededV2 = true;
     }
+
+    // 最後：確保每個錢包／分類都有排序欄位（新加入的預設項目也要）
+    out.wallets.forEach(function (w, i) { if (typeof w.sort !== 'number') w.sort = i; });
+    out.categories.forEach(function (c, i) { if (typeof c.sort !== 'number') c.sort = i; });
+
     out.schema = SCHEMA;
     return out;
   }
