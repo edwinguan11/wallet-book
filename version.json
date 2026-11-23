@@ -1,6 +1,6 @@
 {
-  "versionCode": 6,
-  "versionName": "1.0.5",
-  "apk": "https://edwinguan11.github.io/wallet-book/wallet-book-1.0.5.apk",
-  "notes": "1.0.5：\n· 每週自動備份（保留 4 份）\n· 週期性支出自動記賬\n· 首頁顯示本月可花多少\n· 新增借貸記錄、儲蓄目標、餘額核對"
+  "versionCode": 7,
+  "versionName": "1.0.6",
+  "apk": "https://edwinguan11.github.io/wallet-book/wallet-book-1.0.6.apk",
+  "notes": "1.0.6：\n· 新增桌面小工具：一按即記賬，不用開 App\n· 可在設定自訂 4 個快捷按鈕\n· 餘額明細可逐筆刪除；記錄頁新增類型篩選"
 }

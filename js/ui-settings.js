@@ -87,6 +87,26 @@
     });
     html += '</div></div>';
 
+    // ---- 桌面小工具 ----
+    const wps = widgetPresets();
+    html += '<div class="h-sec">桌面小工具</div><div class="card">' +
+      '<div class="row between" style="margin-bottom:10px"><div class="help">一按即記錄，不用開 App。</div>' +
+      '<button class="btn sm" id="addWidget">＋ 新增</button></div>';
+    if (!wps.length) {
+      html += '<div class="mini-k">尚未設定按鈕。新增後，長按手機桌面 → 小工具 → 記賬本，即可加入。</div>';
+    } else {
+      wps.forEach(function (wp, i) {
+        const c = Data.category(wp.c);
+        html += '<div class="wrow" data-ewp="' + i + '">' +
+          '<span style="font-size:15px">' + esc(c.icon) + '</span>' +
+          '<span class="grow ellip"><span style="font-size:13.5px">' + esc(wp.l) + '</span>' +
+          '<div class="mini-k">' + esc(c.name) + ' · ' + esc(Data.wallet(wp.w).name) + '</div></span>' +
+          '<span class="mono" style="font-size:13px;color:var(--accent)">$' + (Math.round(wp.a * 100) / 100) + '</span></div>';
+      });
+    }
+    html += '<div class="mini-k" style="margin-top:10px">加入方法：長按桌面空白處 → 小工具 → 找「記賬本」→ 拖到桌面。' +
+      (window.AndroidBridge && AndroidBridge.setWidgetPresets ? '' : '<br>（網頁版不支援小工具，請用 APK）') + '</div></div>';
+
     // ---- 週期性支出 ----
     const recs = Data.recurring();
     html += '<div class="h-sec">週期性支出</div><div class="card">' +
@@ -417,6 +437,71 @@
       });
   }
 
+  /* ---------- 桌面小工具按鈕 ---------- */
+  const DEFAULT_WIDGET = [
+    { l: '巴士', a: 6, c: 'c_bus', w: 'w_octopus' },
+    { l: '小巴', a: 4.1, c: 'c_minibus', w: 'w_octopus' },
+    { l: '午餐', a: 45, c: 'c_lunch', w: 'w_alipayhk' }
+  ];
+
+  function widgetPresets() {
+    const st = Store.get().settings;
+    if (!Array.isArray(st.widgetPresets)) st.widgetPresets = DEFAULT_WIDGET.slice();
+    return st.widgetPresets;
+  }
+
+  function pushWidgetPresets() {
+    const list = widgetPresets();
+    try {
+      if (window.AndroidBridge && AndroidBridge.setWidgetPresets) {
+        AndroidBridge.setWidgetPresets(JSON.stringify(list));
+      }
+    } catch (e) {}
+  }
+
+  function editWidgetPreset(idx) {
+    const list = widgetPresets();
+    const isNew = idx < 0;
+    const wp = isNew ? { l: '', a: 0, c: 'c_food', w: 'w_octopus' } : list[idx];
+
+    UI.sheet('<h3>' + (isNew ? '新增小工具按鈕' : '編輯按鈕') + '</h3><div class="frm">' +
+      '<div class="two"><div><label class="fl">名稱</label><input type="text" id="wpL" value="' + esc(wp.l) + '" placeholder="例如 巴士"></div>' +
+      '<div><label class="fl">金額</label><input type="number" id="wpA" step="0.1" value="' + (wp.a || '') + '"></div></div>' +
+      '<div><label class="fl">分類</label><select id="wpC">' +
+      Data.categories('expense').map(function (c) {
+        return '<option value="' + c.id + '"' + (c.id === wp.c ? ' selected' : '') + '>' + esc(c.icon + ' ' + c.name) + '</option>';
+      }).join('') + '</select></div>' +
+      '<div><label class="fl">錢包</label><select id="wpW">' +
+      Data.wallets().map(function (w) {
+        return '<option value="' + w.id + '"' + (w.id === wp.w ? ' selected' : '') + '>' + esc(w.icon + ' ' + w.name) + '</option>';
+      }).join('') + '</select></div>' +
+      '</div><div class="sheet-actions">' + (isNew ? '' : '<button class="btn danger" id="wpDel">刪除</button>') +
+      '<button class="btn primary" id="wpSave">儲存</button></div>', function (root) {
+      root.querySelector('#wpSave').onclick = function () {
+        const l = root.querySelector('#wpL').value.trim();
+        const a = parseFloat(root.querySelector('#wpA').value);
+        if (!l) { UI.toast('請輸入名稱'); return; }
+        if (!a || a <= 0) { UI.toast('請輸入金額'); return; }
+        const rec = { l: l, a: U.round2(a), c: root.querySelector('#wpC').value, w: root.querySelector('#wpW').value };
+        const arr = widgetPresets();
+        if (isNew) { if (arr.length >= 4) { UI.toast('最多 4 個按鈕'); return; } arr.push(rec); }
+        else arr[idx] = rec;
+        Store.get().settingsUpdatedAt = U.nowMs();
+        Store.save({ silent: true });
+        pushWidgetPresets();
+        UI.closeSheet(); UI.render(); UI.toast('已更新小工具');
+      };
+      const d = root.querySelector('#wpDel');
+      if (d) d.onclick = function () {
+        widgetPresets().splice(idx, 1);
+        Store.get().settingsUpdatedAt = U.nowMs();
+        Store.save({ silent: true });
+        pushWidgetPresets();
+        UI.closeSheet(); UI.render(); UI.toast('已刪除');
+      };
+    });
+  }
+
   /* ---------- 週期性支出編輯 ---------- */
   function editRecurring(id) {
     const isNew = !id;
@@ -569,6 +654,13 @@
       UI.toast(r.ok ? '匯率已更新' : ('更新失敗：' + r.msg), 2600);
       UI.render();
     };
+    const adw = $('#addWidget');
+    if (adw) adw.onclick = function () { editWidgetPreset(-1); };
+    $$('[data-ewp]').forEach(function (el) {
+      el.style.cursor = 'pointer';
+      el.onclick = function () { editWidgetPreset(parseInt(el.dataset.ewp, 10)); };
+    });
+
     const ar2 = $('#addRec');
     if (ar2) ar2.onclick = function () { editRecurring(null); };
     $$('[data-er]').forEach(function (el) {

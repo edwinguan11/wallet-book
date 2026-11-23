@@ -122,6 +122,35 @@
         if (n > 0) { UI.toast('已自動記錄 ' + n + ' 筆週期性支出', 3000); UI.render(); }
       } catch (e) {}
       if (global.Backup) Backup.auto();
+      // 桌面小工具的暫存記錄
+      try {
+        if (window.AndroidBridge && AndroidBridge.takeQuick) {
+          const raw = AndroidBridge.takeQuick();
+          const list = JSON.parse(raw || '[]');
+          if (list && list.length) {
+            let n = 0;
+            list.forEach(function (q) {
+              if (!q || !(q.a > 0)) return;
+              Data.addTxn({
+                type: 'expense', amount: q.a, hkd: q.a,
+                date: (function (ts) {
+                  const d = new Date(ts || Date.now());
+                  const p2 = function (x) { return String(x).padStart(2, '0'); };
+                  return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+                })(q.t),
+                categoryId: q.c || 'c_food', walletId: q.w || 'w_octopus',
+                note: q.l || '小工具記賬'
+              });
+              n++;
+            });
+            if (n) { UI.render(); UI.toast('已匯入 ' + n + ' 筆小工具記錄', 3000); }
+          }
+          if (typeof AndroidBridge.setWidgetPresets === 'function') {
+            const st = Store.get().settings;
+            AndroidBridge.setWidgetPresets(JSON.stringify(Array.isArray(st.widgetPresets) ? st.widgetPresets : []));
+          }
+        }
+      } catch (e) {}
       if (!Store.get().settings.onboarded) {
         setTimeout(showWelcome, 700);
       }
