@@ -385,13 +385,14 @@
       '</div>';
 
     rows.sort(function (a, b) { return a.t.date < b.t.date ? 1 : -1; });
-    h += '<div class="h-sec">最近 12 筆</div><table class="tbl"><tbody>';
-    rows.slice(0, 12).forEach(function (r) {
+    h += '<div class="h-sec">全部記錄（' + rows.length + ' 筆，可按右邊刪除）</div><table class="tbl"><tbody>';
+    rows.slice(0, 80).forEach(function (r) {
       const t = r.t;
       const label = t.note || (t.type === 'transfer' ? '轉賬' : Data.category(t.categoryId).name);
-      h += '<tr><td class="muted" style="width:52px">' + esc(t.date.slice(5)) + '</td>' +
-        '<td class="ellip" style="max-width:120px">' + esc(label) + '</td>' +
-        '<td class="' + (r.delta > 0 ? 'pos' : 'neg') + '">' + (r.delta > 0 ? '+' : '−') + U.fmtMoney(Math.abs(r.delta)) + '</td></tr>';
+      h += '<tr><td class="muted" style="width:46px">' + esc(t.date.slice(5)) + '</td>' +
+        '<td class="ellip" style="max-width:110px">' + esc(label) + '</td>' +
+        '<td class="' + (r.delta > 0 ? 'pos' : 'neg') + '">' + (r.delta > 0 ? '+' : '−') + U.fmtMoney(Math.abs(r.delta)) + '</td>' +
+        '<td style="width:44px"><button class="btn sm ghost" data-wdel="' + t.id + '">✕</button></td></tr>';
     });
     h += '</tbody></table>';
 
@@ -401,6 +402,21 @@
     UI.sheet(h, function (root) {
       root.querySelector('#wdClose').onclick = UI.closeSheet;
       root.querySelector('#wdDup').onclick = function () { UI.closeSheet(); findDuplicates(wid); };
+      root.querySelectorAll('[data-wdel]').forEach(function (b) {
+        b.onclick = function () {
+          const id = b.dataset.wdel;
+          const t = Store.get().txns.find(function (x) { return x.id === id; });
+          const label = t ? (t.note || (t.type === 'transfer' ? '轉賬' : Data.category(t.categoryId).name)) : '';
+          UI.confirm('刪除這筆記錄？', (t ? t.date + ' · ' + label + ' · ' + U.fmtMoney(t.hkd) : '') + '\n刪除後餘額會即時更新。',
+            function () {
+              Data.removeTxn(id);
+              UI.closeSheet();
+              UI.render();
+              openWalletDetail(wid);
+              UI.toast('已刪除');
+            });
+        };
+      });
     });
   }
 

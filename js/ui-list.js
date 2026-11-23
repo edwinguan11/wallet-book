@@ -5,11 +5,13 @@
   UI.state.listQuery = '';
   UI.state.listCat = '';
   UI.state.listWallet = '';
+  UI.state.listType = '';
 
   function matches(t) {
     const q = UI.state.listQuery.trim().toLowerCase();
     if (UI.state.listCat && t.categoryId !== UI.state.listCat) return false;
     if (UI.state.listWallet && t.walletId !== UI.state.listWallet) return false;
+    if (UI.state.listType && t.type !== UI.state.listType) return false;
     if (!q) return true;
     const c = Data.category(t.categoryId);
     const w = Data.wallet(t.walletId);
@@ -74,6 +76,10 @@
       if (UI.state.listWallet) {
         html += '<button class="chip on" data-clear="wallet">' + esc(Data.wallet(UI.state.listWallet).name) + ' ✕</button>';
       }
+      if (UI.state.listType) {
+        html += '<button class="chip on" data-clear="type">' +
+          ({ expense: '支出', income: '收入', transfer: '轉賬' }[UI.state.listType]) + ' ✕</button>';
+      }
       html += '</div>';
     }
 
@@ -123,6 +129,7 @@
     $$('[data-clear]').forEach(function (b) {
       b.onclick = function () {
         if (b.dataset.clear === 'cat') UI.state.listCat = '';
+        else if (b.dataset.clear === 'type') UI.state.listType = '';
         else UI.state.listWallet = '';
         UI.render();
       };
@@ -149,7 +156,12 @@
       html += '<button class="chip' + (UI.state.listWallet === w.id ? ' on' : '') + '" data-fw="' + w.id + '">' +
         esc(w.icon) + ' ' + esc(w.name) + '</button>';
     });
-    html += '</div><div class="sheet-actions"><button class="btn primary" id="fDone">完成</button></div>';
+    html += '</div><div class="h-sec">類型</div><div class="chips" style="flex-wrap:wrap;overflow:visible;gap:8px">' +
+      '<button class="chip' + (!UI.state.listType ? ' on' : '') + '" data-ft="">全部</button>' +
+      '<button class="chip' + (UI.state.listType === 'expense' ? ' on' : '') + '" data-ft="expense">支出</button>' +
+      '<button class="chip' + (UI.state.listType === 'income' ? ' on' : '') + '" data-ft="income">收入</button>' +
+      '<button class="chip' + (UI.state.listType === 'transfer' ? ' on' : '') + '" data-ft="transfer">轉賬</button>' +
+      '</div><div class="sheet-actions"><button class="btn primary" id="fDone">完成</button></div>';
 
     UI.sheet(html, function (root) {
       root.querySelectorAll('[data-fc]').forEach(function (b) {
@@ -157,6 +169,9 @@
       });
       root.querySelectorAll('[data-fw]').forEach(function (b) {
         b.onclick = function () { UI.state.listWallet = b.dataset.fw; UI.closeSheet(); UI.render(); };
+      });
+      root.querySelectorAll('[data-ft]').forEach(function (b) {
+        b.onclick = function () { UI.state.listType = b.dataset.ft; UI.closeSheet(); UI.render(); };
       });
       root.querySelector('#fDone').onclick = UI.closeSheet;
     });
