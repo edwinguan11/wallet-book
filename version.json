@@ -1,6 +1,6 @@
 {
-  "versionCode": 10,
-  "versionName": "1.0.9",
-  "apk": "https://edwinguan11.github.io/wallet-book/wallet-book-1.0.9.apk",
-  "notes": "1.0.9：小工具全新設計\n· 四色磁貼，一眼分得出按鈕\n· 金額放大、加入分類圖示\n· 點擊範圍加大到整個磁貼"
+  "versionCode": 11,
+  "versionName": "1.1.0",
+  "apk": "https://edwinguan11.github.io/wallet-book/wallet-book-1.1.0.apk",
+  "notes": "1.1.0：小工具改良\n· 預設只佔 2 格（2 個按鈕就夠）\n· 自動跟隨系統深／淺色\n· 整體再收窄，減少佔位"
 }
